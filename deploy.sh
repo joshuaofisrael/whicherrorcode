@@ -1,5 +1,6 @@
 #!/bin/bash
-# Build, QA, legal gate, then commit. Usage: ./deploy.sh [--launch] "commit message"
+# Build, QA, legal gate. Usage: ./deploy.sh [--launch]
+# --launch fails in check.py until GA4_ID in _build/build.py is a G- measurement id.
 set -e
 cd "$(dirname "$0")"
 MODE=""
