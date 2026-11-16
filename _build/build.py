@@ -26,7 +26,7 @@ CF_BEACON_TOKEN = "eac63f2b5dbc4539a2d95249baab6472"
 FORM_ENDPOINT = "https://formsubmit.co/joshuaofisrael@gmail.com"
 CONTACT_EMAIL = "joshuaofisrael@gmail.com"
 # Public GA4 measurement id. Empty until the owner pastes G-XXXXXXXXXX. Not a secret.
-GA4_ID = ""
+GA4_ID = "G-MNR4EL37WN"
 LEGAL_LINE = "Which Error Code is a trade name of Joshua Israel Ventures LLC, a Florida limited liability company."
 E = html.escape
 PAGES = []
