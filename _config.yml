@@ -1,0 +1,2 @@
+include: [CNAME]
+exclude: [README.md, LAUNCH-NOTES.md, _build, deploy.sh, indexnow.sh, legal, .gitignore]
