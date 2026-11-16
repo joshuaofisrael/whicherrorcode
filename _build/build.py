@@ -2,12 +2,14 @@
 """Which Error Code static site builder. Run from the repo root.
 
   python3 _build/build.py            # pre launch: noindex on every page, root paths, CNAME
-  python3 _build/build.py --launch   # domain live: indexable, Cloudflare beacon
+  python3 _build/build.py --launch   # domain live: indexable, Cloudflare beacon, GA4 after consent
 
 NOINDEX is the single pre launch flag. Paths are always root relative.
 Canonicals always use https://whicherrorcode.com/.
+GA4_ID stays an empty string until the owner pastes a G-XXXXXXXXXX measurement id.
+check.py --launch fails while that constant is empty.
 """
-import os, sys, json, html, zlib, struct
+import os, sys, json, html, re, zlib, struct
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from codes import BRANDS, APPLS, GROUPS
 from filters import FILTERS
@@ -23,6 +25,8 @@ INDEXNOW_KEY = "e5e7fc4f0a0e96a11d330aa8cf3cba1c"
 CF_BEACON_TOKEN = "eac63f2b5dbc4539a2d95249baab6472"
 FORM_ENDPOINT = "https://formsubmit.co/joshuaofisrael@gmail.com"
 CONTACT_EMAIL = "joshuaofisrael@gmail.com"
+# Public GA4 measurement id. Empty until the owner pastes G-XXXXXXXXXX. Not a secret.
+GA4_ID = ""
 LEGAL_LINE = "Which Error Code is a trade name of Joshua Israel Ventures LLC, a Florida limited liability company."
 E = html.escape
 PAGES = []
@@ -72,6 +76,8 @@ def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, robot
     # 404 and other utility pages pass noindex=True and stay out.
     if path != "/404.html" and not noindex:
         PAGES.append((path, TODAY))
+    blocks = jsonld if isinstance(jsonld, list) else ([jsonld] if jsonld else [])
+    og_type = "article" if any(isinstance(x, dict) and x.get("@type") == "Article" for x in blocks) else "website"
     ld = []
     if path == "/":
         ld.append({"@context": "https://schema.org", "@type": "WebSite", "name": BRAND, "url": BASE,
@@ -82,8 +88,7 @@ def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, robot
     if crumbs:
         ld.append({"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
             {"@type": "ListItem", "position": i + 1, "name": n, "item": url(p)} for i, (p, n) in enumerate(crumbs)]})
-    if jsonld:
-        ld += jsonld if isinstance(jsonld, list) else [jsonld]
+    ld += blocks
     ldh = "".join(f'<script type="application/ld+json">{json.dumps(x, ensure_ascii=False)}</script>' for x in ld)
     nav = "".join(f'<a href="{p}"' + (' aria-current="page"' if p == path else "") + f'>{n}</a>' for p, n in NAV)
     bc = ""
@@ -92,21 +97,39 @@ def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, robot
             (f'<li><a href="{p}">{E(n)}</a></li>' if i < len(crumbs) - 1 else f'<li aria-current="page">{E(n)}</li>')
             for i, (p, n) in enumerate(crumbs)) + "</ol></nav>"
     robots = "noindex, follow" if force_no else "index, follow, max-image-preview:large"
-    beacon = (f"<!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{{\"token\": \"{CF_BEACON_TOKEN}\"}}'></script><!-- End Cloudflare Web Analytics -->") if LAUNCH else "<!-- cf-beacon: added by launch build -->"
+    if LAUNCH:
+        beacon = (f"<!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{{\"token\": \"{CF_BEACON_TOKEN}\"}}'></script><!-- End Cloudflare Web Analytics -->")
+        # Consent Mode v2 defaults are denied. consent.js requests gtag only after Accept.
+        ga4 = (
+            "<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}"
+            "gtag('consent','default',{'ad_storage':'denied','ad_user_data':'denied','ad_personalization':'denied','analytics_storage':'denied','wait_for_update':500});</script>"
+            f'<script src="/assets/consent.js?v=1" defer data-ga4-loader="1" data-ga4-id="{E(GA4_ID)}" data-ga4-src="https://www.googletagmanager.com/gtag/js"></script>'
+        )
+        banner = (
+            '<div id="cookie-banner" class="cookie-banner" role="region" aria-label="Cookie choices" hidden>'
+            '<p>Google Analytics 4 stays off until you accept. Cloudflare Web Analytics does not use cookies.</p>'
+            '<button type="button" class="btn" id="cookie-accept">Accept</button>'
+            '<button type="button" class="btn alt" id="cookie-reject">Reject</button></div>'
+        )
+    else:
+        beacon = "<!-- cf-beacon: added by launch build -->"
+        ga4 = ""
+        banner = ""
     flag = "on" if NOINDEX else "off"
     legal = ""
     return f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{E(title)}</title><meta name="description" content="{E(desc)}"><link rel="canonical" href="{canon}">
 <meta name="robots" content="{robots}">
-<meta property="og:type" content="website"><meta property="og:site_name" content="{BRAND}"><meta property="og:title" content="{E(title)}"><meta property="og:description" content="{E(desc)}"><meta property="og:url" content="{canon}"><meta property="og:image" content="{url('/og.png')}"><meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/style.css?v=1">{ldh}
+<meta property="og:type" content="{og_type}"><meta property="og:site_name" content="{BRAND}"><meta property="og:title" content="{E(title)}"><meta property="og:description" content="{E(desc)}"><meta property="og:url" content="{canon}"><meta property="og:image" content="{url('/og.png')}"><meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/style.css?v=2">{ga4}{ldh}
 </head><body><a class="skip" href="#main">Skip to content</a>
 <header class="site"><div class="wrap"><a class="brand" href="/">{LOGO}<span>{BRAND}</span></a><nav class="main" aria-label="Main">{nav}</nav></div></header>
 <main id="main" class="wrap">{bc}{body}<!-- ad-slot: below-content (reserved; no ad code) --></main>
 <footer class="site"><div class="wrap"><p class="fbrand"><strong>{BRAND}</strong> explains home appliance error codes and refrigerator water filter numbers from the manufacturer pages we cite. We are independent. Names are used only to identify the appliance. Codes and part numbers change by model, so check the manual for yours.</p>
-<p class="flinks"><a href="/about/">About</a> | <a href="/methodology/">Sources and methods</a> | <a href="/image-policy/">Image policy</a> | <a href="/terms/">Terms of use</a> | <a href="/privacy/">Privacy</a> | <a href="/disclaimer/">Disclaimer</a> | <a href="/ad-disclosure/">Advertising disclosure</a> | <a href="/copyright/">Copyright and DMCA</a> | <a href="/contact/">Contact</a></p>
+<p class="flinks"><a href="/about/">About</a> | <a href="/methodology/">Sources and methods</a> | <a href="/image-policy/">Image policy</a> | <a href="/terms/">Terms of use</a> | <a href="/privacy/">Privacy</a> | <a href="/privacy/#analytics" id="cookie-settings">Cookie settings</a> | <a href="/disclaimer/">Disclaimer</a> | <a href="/ad-disclosure/">Advertising disclosure</a> | <a href="/copyright/">Copyright and DMCA</a> | <a href="/contact/">Contact</a></p>
 {legal}</div></footer>
+{banner}
 <script src="/assets/site.js?v=1" defer></script>{beacon}
 <!-- noindex-flag: {flag} -->
 </body></html>'''
@@ -198,6 +221,7 @@ def code_page(r):
     extra = f"<p>{E(r['extra'])}</p>" if r["extra"] else ""
     sibs = [x for x in ROWS if x["brand"] == r["brand"] and x["appl"] == r["appl"] and x["slug"] != r["slug"] and x["individual"]][:6]
     sib = "".join(f'<li><a href="{code_path(x)}">{E(x["code"])}</a>: {E(x["meaning"])}</li>' for x in sibs)
+    more = f'<h2>More {E(b)} {E(a.lower())} codes</h2><ul>{sib}</ul>' if sib else ""
     water = ""
     if r["water"]:
         water = '<p>Related: <a href="/filters/">refrigerator water filter finder</a>. A sensor code is not a filter part number. Match the cartridge in the refrigerator to the manual.</p>'
@@ -216,8 +240,8 @@ def code_page(r):
 {water}
 {faq_html(faqs)}
 {sources_html(r["sources"], f"Retrieved {TODAY_H}. Models differ. If your manual defines this code differently, the manual wins. {BRAND} is not affiliated with {E(b)}.")}
-<h2>More {E(b)} {E(a.lower())} codes</h2><ul>{sib}</ul>
-<p><a href="{listing_path(r["brand"], r["appl"])}">All {E(b)} {E(a.lower())} codes</a> · <a href="/guides/safety/">Safety notes</a> · <a href="/codes/">All brands</a></p>
+{more}
+<p><a href="{listing_path(r["brand"], r["appl"])}">All {E(b)} {E(a.lower())} codes</a> · <a href="/brands/{r["brand"]}/">{E(b)}</a> · <a href="/appliances/{APLUR[r["appl"]]}/">{E(a)} brands</a> · <a href="/guides/safety/">Safety notes</a> · <a href="/codes/">All error codes</a></p>
 </article>'''
     write(path, page(path, title, desc, body, [article_ld(f"{b} {a.lower()} code {r['code']}", path, f"{b} {r['code']}"), faq_ld(faqs)],
                     [("/", "Home"), ("/codes/", "Error codes"), (listing_path(r["brand"], r["appl"]), f"{b} {a}"), (path, r["code"])]))
@@ -278,15 +302,23 @@ def brand_pages():
             items.append(f'<li><a href="{listing_path(slug, appl)}">{E(an)} codes</a> ({len(rows)} verified)</li>')
         if not items:
             continue
-        body = f'''<h1>{E(name)} error codes</h1>
+        faqs = [
+            (f"Which {name} appliance should I open?",
+             f"Open the type printed on the machine. This page links only the {name} appliances whose codes we read on a {name} support page."),
+            (f"Why is a {name} code missing?",
+             "A code is missing when it was not on the manufacturer page we checked. We do not add codes from repair blogs or from another brand."),
+        ]
+        body = f'''<article class="prose"><h1>{E(name)} error codes</h1>
 {byline()}
 <p class="answer">Pick the appliance. Every code is cited to a {E(name)} manual or support page. We leave out codes we have not checked on that page.</p>
 <ul class="cols">{"".join(items)}</ul>
-<p><a href="/codes/">All brands</a> · <a href="/guides/safety/">Safety notes</a></p>'''
+{faq_html(faqs)}
+<p><a href="/brands/">All brands</a> · <a href="/codes/">All error codes</a> · <a href="/guides/safety/">Safety notes</a></p></article>'''
         path = f"/brands/{slug}/"
         covered = [ANAME[appl].lower() for appl, _, _ in APPLS if any(r["brand"] == slug and r["appl"] == appl for r in ROWS)]
         write(path, page(path, f"{name} Appliance Error Codes", f"{name} error codes we verified: {', '.join(covered)}. Each code is cited to a {name} support page.",
-                        body, None, [("/", "Home"), ("/brands/", "Brands"), (path, name)]))
+                        body, [article_ld(f"{name} error codes", path, name), faq_ld(faqs)],
+                        [("/", "Home"), ("/brands/", "Brands"), (path, name)]))
     cards = []
     for slug, name in BRANDS:
         labels = []
@@ -295,12 +327,22 @@ def brand_pages():
                 labels.append(f'<a href="{listing_path(slug, appl)}">{E(an)}</a>')
         if labels:
             cards.append(f'<li class="card"><h2><a href="/brands/{slug}/">{E(name)}</a></h2><p>{", ".join(labels)}</p></li>')
-    body = f'''<h1>Error codes by brand</h1>
+    faqs = [
+        ("Which brand should I pick?",
+         "Pick the name printed on the appliance. A code is published here only after we read it on that manufacturer's support page or manual."),
+        ("Which brands or machines are missing?",
+         "Frigidaire pages are not in this version. We did not find a Frigidaire.com code list we could cite code by code. Bosch ranges, refrigerators, and dryers, KitchenAid washers and dryers, and GE ovens are in the same gap."),
+    ]
+    body = f'''<article class="prose"><h1>Error codes by brand</h1>
+{byline()}
 <p class="answer">Choose a brand. We publish a code only after reading it on that manufacturer's support page or manual.</p>
 <ul class="cards">{"".join(cards)}</ul>
-<p>Frigidaire pages are not in this version. We did not find a Frigidaire.com code list we could cite code by code. Bosch ranges, refrigerators, and dryers, KitchenAid washers and dryers, and GE ovens are in the same gap.</p>'''
+<p>Frigidaire pages are not in this version. We did not find a Frigidaire.com code list we could cite code by code. Bosch ranges, refrigerators, and dryers, KitchenAid washers and dryers, and GE ovens are in the same gap.</p>
+{faq_html(faqs)}
+<p><a href="/codes/">All error codes</a> · <a href="/appliances/">By appliance</a> · <a href="/guides/safety/">Safety notes</a></p></article>'''
     write("/brands/", page("/brands/", f"Appliance Error Codes by Brand | {BRAND}", "Samsung, LG, GE Appliances, Whirlpool, Maytag, KitchenAid, and Bosch error codes, each cited to the manufacturer.",
-                          body, None, [("/", "Home"), ("/brands/", "Brands")]))
+                          body, [article_ld("Error codes by brand", "/brands/"), faq_ld(faqs)],
+                          [("/", "Home"), ("/brands/", "Brands")]))
 
 def appliance_pages():
     for appl, an, plural in APPLS:
@@ -311,21 +353,44 @@ def appliance_pages():
                 continue
             preview = ", ".join(r["code"] for r in rows[:6])
             items.append(f'<li class="card"><h2><a href="{listing_path(slug, appl)}">{E(name)} {E(an.lower())} codes</a></h2><p>{E(preview)}</p></li>')
-        body = f'''<h1>{E(an)} error codes</h1>
+        faqs = [
+            (f"Which brand should I pick for a {an.lower()} code?",
+             f"Use the brand name on the appliance. The same letters can mean different things on another brand. This page links only brands whose {an.lower()} codes we have checked."),
+            (f"Which checks are safe on a {an.lower()}?",
+             "Only the checks written on that brand's page, taken from the manufacturer. Unplug the appliance or switch off the breaker before you move it or open a panel. If it uses gas, shut the gas supply off before any step the manufacturer did not publish."),
+        ]
+        related = '<p>A filter part number is not an error code. <a href="/filters/">Which water filter fits</a> is a separate page.</p>' if appl == "refrigerator" else ""
+        body = f'''<article class="prose"><h1>{E(an)} error codes</h1>
+{byline()}
 <p class="answer">Brand pages for {E(an.lower())} codes we verified. The same letters can mean different things on another brand, so start with the name on the appliance.</p>
 <ul class="cards">{"".join(items)}</ul>
-<p><a href="/codes/">All error codes</a> · <a href="/guides/safety/">Unplug and gas shutoff</a></p>'''
+{related}
+{faq_html(faqs)}
+<p><a href="/appliances/">All appliance types</a> · <a href="/codes/">All error codes</a> · <a href="/guides/safety/">Unplug and gas shutoff</a></p></article>'''
         path = f"/appliances/{plural}/"
         write(path, page(path, f"{an} Error Codes by Brand", f"{an} error codes for the brands we have checked, with the manufacturer's meaning and the safe checks.",
-                        body, None, [("/", "Home"), ("/appliances/", "Appliances"), (path, plural.capitalize())]))
+                        body, [article_ld(f"{an} error codes", path, an), faq_ld(faqs)],
+                        [("/", "Home"), ("/appliances/", "Appliances"), (path, plural.capitalize())]))
     cards = "".join(f'<li class="card"><h2><a href="/appliances/{p}/">{E(n)}s</a></h2><p>Codes for {E(n.lower())}s, brand by brand.</p></li>' for _, n, p in APPLS)
     # Wait, ANAME already includes the noun "Washer" and plural path is washers. Card title "Washers" from path. Fix: use plural from path capitalized properly.
     cards = []
     for _, n, p in APPLS:
         cards.append(f'<li class="card"><h2><a href="/appliances/{p}/">{E(p.capitalize())}</a></h2><p>Verified {E(n.lower())} codes by brand.</p></li>')
-    body = f'<h1>Error codes by appliance</h1><p class="answer">Washers, dryers, dishwashers, refrigerators, and ovens. Open a type, then the brand printed on the appliance.</p><ul class="cards">{"".join(cards)}</ul>'
+    faqs = [
+        ("Which appliance type should I open?",
+         "Open the type that matches the machine: washer, dryer, dishwasher, refrigerator, or oven. Then pick the brand printed on it."),
+        ("Do the same letters mean the same thing on every brand?",
+         "No. Start with the brand name on the appliance. A code page for one brand does not apply to another."),
+    ]
+    body = f'''<article class="prose"><h1>Error codes by appliance</h1>
+{byline()}
+<p class="answer">Washers, dryers, dishwashers, refrigerators, and ovens. Open a type, then the brand printed on the appliance.</p>
+<ul class="cards">{"".join(cards)}</ul>
+{faq_html(faqs)}
+<p><a href="/brands/">By brand</a> · <a href="/codes/">All error codes</a> · <a href="/filters/">Water filters</a></p></article>'''
     write("/appliances/", page("/appliances/", f"Error Codes by Appliance | {BRAND}", "Washer, dryer, dishwasher, refrigerator, and oven error codes, sorted by appliance type.",
-                              body, None, [("/", "Home"), ("/appliances/", "Appliances")]))
+                              body, [article_ld("Error codes by appliance", "/appliances/"), faq_ld(faqs)],
+                              [("/", "Home"), ("/appliances/", "Appliances")]))
 
 def codes_index(search_json):
     rows = []
@@ -333,17 +398,34 @@ def codes_index(search_json):
         if not r["individual"]:
             continue
         rows.append(f'<li><a href="{code_path(r)}">{E(BNAME[r["brand"]])} {E(ANAME[r["appl"]].lower())} {E(r["code"])}</a></li>')
-    body = f'''<h1>Appliance error code pages</h1>
+    faqs = [
+        ("Which error code page should I open?",
+         "Open the brand, then the appliance. Single code pages are the codes people look up most often. Other verified codes are on the brand and appliance listing."),
+        ("Which source is a code based on?",
+         "Each code page links the manufacturer page it was read from. If the code is not on that page, it is not on this site."),
+    ]
+    body = f'''<article class="prose wide"><h1>Appliance error code pages</h1>
+{byline()}
 <p class="answer">One page for each brand and appliance we have checked, plus a page for the codes people look up most often. Search from the <a href="/">home page</a>.</p>
 <h2>By brand</h2><ul class="cols">{"".join(f'<li><a href="/brands/{s}/">{E(n)}</a></li>' for s, n in BRANDS)}</ul>
 <h2>By appliance</h2><ul class="cols">{"".join(f'<li><a href="/appliances/{p}/">{E(p.capitalize())}</a></li>' for _, _, p in APPLS)}</ul>
 <h2>Single codes</h2><ul class="cols">{"".join(rows)}</ul>
 <p class="note">Each code page links the manufacturer page it was read from. Retrieved {TODAY_H}.</p>
-<section class="sources"><h2>Sources</h2><ul><li><a href="https://www.samsung.com/us/support/troubleshoot/TSG10000997/" rel="nofollow noopener" target="_blank">Samsung washer error codes</a></li><li><a href="https://www.lg.com/us/support/help-library/lg-front-load-washer-error-code-list--20155069413456" rel="nofollow noopener" target="_blank">LG washer error codes</a></li><li><a href="https://products.geappliances.com/appliance/gea-support-search-content?contentId=16912" rel="nofollow noopener" target="_blank">GE Appliances refrigerator fault codes</a></li></ul><p class="note">The full citation list is on each code page.</p></section>'''
+<section class="sources"><h2>Sources</h2><ul><li><a href="https://www.samsung.com/us/support/troubleshoot/TSG10000997/" rel="nofollow noopener" target="_blank">Samsung washer error codes</a></li><li><a href="https://www.lg.com/us/support/help-library/lg-front-load-washer-error-code-list--20155069413456" rel="nofollow noopener" target="_blank">LG washer error codes</a></li><li><a href="https://products.geappliances.com/appliance/gea-support-search-content?contentId=16912" rel="nofollow noopener" target="_blank">GE Appliances refrigerator fault codes</a></li></ul><p class="note">The full citation list is on each code page.</p></section>
+{faq_html(faqs)}</article>'''
     write("/codes/", page("/codes/", f"Appliance Error Code List | {BRAND}", "Browse verified washer, dryer, dishwasher, refrigerator, and oven error codes by brand.",
-                         body, None, [("/", "Home"), ("/codes/", "Error codes")]))
+                         body, [article_ld("Appliance error code pages", "/codes/"), faq_ld(faqs)],
+                         [("/", "Home"), ("/codes/", "Error codes")]))
 
 def home(search_json):
+    faqs = [
+        ("Which error code should I look up?",
+         "Use the code on the appliance display. Search on this page, or open the brand and then the appliance type. Every code page comes from the manufacturer's support page or manual."),
+        ("Which water filter should I pick?",
+         "Read the part number on the cartridge you take out and the model number in the manual, then open the filter finder. A model is listed only when the manufacturer lists it."),
+        ("When should I stop and call a technician?",
+         "Stop when the code returns, when the manufacturer says service is required, or when the check is not on the cited page. Unplug the appliance before you move it or open a panel."),
+    ]
     brand_cards = []
     for slug, name in BRANDS:
         links = [f'<a href="{listing_path(slug, appl)}">{E(ANAME[appl])}</a>' for appl, _, _ in APPLS if any(r["brand"] == slug and r["appl"] == appl for r in ROWS)]
@@ -359,9 +441,10 @@ def home(search_json):
 <h2>Brands</h2><ul class="cards">{"".join(brand_cards)}</ul>
 <h2>Appliance types</h2><ul class="cols">{"".join(f'<li><a href="/appliances/{p}/">{E(p.capitalize())}</a></li>' for _, _, p in APPLS)}</ul>
 <h2>Refrigerator water filters</h2><p>The filter pages list the official part number, the substitute the manufacturer names, and the brands or notes on that official page. We do not copy compatibility charts from other sites. <a href="/filters/">Open the filter finder</a>.</p>
-<h2>How a page is built</h2><p>We open the manufacturer page, record the code and the checks written there, and link that page. If a code is not on the page, it is not here. Names are plain text. There are no logos and no claim that a brand sponsors this site. <a href="/methodology/">Sources and methods</a>.</p>'''
+<h2>How a page is built</h2><p>We open the manufacturer page, record the code and the checks written there, and link that page. If a code is not on the page, it is not here. Names are plain text. There are no logos and no claim that a brand sponsors this site. <a href="/methodology/">Sources and methods</a>.</p>
+{faq_html(faqs)}'''
     desc = "Look up washer, dryer, dishwasher, refrigerator, and oven error codes, plus the official fridge water filter number. Cited to the manufacturer."
-    write("/", page("/", f"{BRAND}: Appliance Error Codes and Water Filters", desc, body))
+    write("/", page("/", f"{BRAND}: Appliance Error Codes and Water Filters", desc, body, faq_ld(faqs)))
 
 def filter_pages():
     by = {f["slug"]: f for f in FILTERS}
@@ -415,7 +498,7 @@ def filter_pages():
 <h2>Find the model number and the part number</h2>
 <p>Take the old cartridge out and read the number printed on it. Then find the refrigerator model. Whirlpool, KitchenAid, and GE Appliances each ask for that model on their filter pages. We do not invent a location. If your manual says the label is inside the fresh food compartment or on the door frame, use that spot for your model and ignore a guess from a different brand.</p>
 <p>These model pages are not in this version, because the official page we opened did not list that exact model: Whirlpool WRF535SWHZ, GE GSS25GSHSS, Samsung RF28R7351SR, LG LFXS26973S, Frigidaire FG4H2272UF, and KitchenAid KRFC302ESS. The same gap covers EDR2RXD1, EDR3RXD1, EDR4RXD1, HAF-CIN, HAF-QIN, LT1000P, LT800P, and EPTWFU01 until their current official pages are checked line by line.</p>
-<p><a href="/filters/reset-filter-light/">Filter light reset, official steps only</a></p>
+<p><a href="/filters/reset-filter-light/">Filter light reset, official steps only</a> · <a href="/appliances/refrigerators/">Refrigerator error codes</a></p>
 {faq_html(faqs)}
 {sources_html([
     ("Whirlpool water filters", "https://www.whirlpool.com/kitchen/refrigeration/water-filters.html"),
@@ -483,11 +566,12 @@ def guide_safety():
                                  [("/", "Home"), ("/guides/safety/", "Safety")]))
 
 def simple(path, title, desc, h1, inner, crumb, faqs=None):
-    body = f'<article class="prose"><h1>{E(h1)}</h1>{inner}</article>'
-    ld = None
+    ld = [article_ld(h1, path)]
+    extra = ""
     if faqs:
-        body = f'<article class="prose"><h1>{E(h1)}</h1>{inner}{faq_html(faqs)}</article>'
-        ld = [article_ld(h1, path), faq_ld(faqs)]
+        extra = faq_html(faqs)
+        ld.append(faq_ld(faqs))
+    body = f'<article class="prose"><h1>{E(h1)}</h1>{inner}{extra}</article>'
     write(path, page(path, title, desc, body, ld, [("/", "Home"), (path, crumb)]))
 
 def about_legal():
@@ -515,7 +599,7 @@ def about_legal():
     simple("/image-policy/", f"Image Policy | {BRAND}", "How Which Error Code handles images and trademarks.", "Image policy", f'''
 <p>Last updated {TODAY_H}.</p>
 <h2>Images</h2>
-<p>The mark in the header, the favicon, and the social image are original graphics we made. They are not photographs of appliances and they are not brand logos.</p>
+<p>The mark in the header, the favicon, and the social image are original graphics we made. They are not photographs of appliances and they are not brand logos. This version includes no photographs. Any photograph added later will link to this page.</p>
 <h2>AI generated images</h2>
 <p>This version uses no AI generated photographs. If we add one, the caption will say AI generated image, it will not show a real person, and it will not be presented as a photo of a real appliance.</p>
 <h2>Logos and trademarks</h2>
@@ -544,16 +628,18 @@ def about_legal():
 <h2>Accuracy</h2><p>We cite our sources and we omit what we cannot verify. We do not warrant that a page is complete or current.</p>
 <h2>Acceptable use</h2><p>You may link to pages for personal, non commercial use. You may not scrape the site in bulk, republish our original text, misuse the contact form, or try to disrupt the site.</p>
 <h2>Intellectual property</h2><p>Original text, design, and compilations belong to Joshua Israel Ventures LLC. Appliance names and trademarks belong to their owners and are used only to identify products. That use does not imply affiliation or endorsement.</p>
-<h2>Third party services</h2><p>We link to manufacturer sites and we use GitHub Pages, Cloudflare, and FormSubmit. We are not responsible for their content or practices.</p>
+<h2>Third party services</h2><p>We link to manufacturer sites and we use GitHub Pages, Cloudflare, and FormSubmit. If you accept analytics on the launch site, Google Analytics 4 loads as well. We are not responsible for their content or practices.</p>
 <h2>Disclaimer of warranties and limitation of liability</h2><p>The site is provided as is and as available. To the fullest extent permitted by law, Joshua Israel Ventures LLC disclaims all warranties and will not be liable for indirect, incidental, special, consequential, or punitive damages, or for a loss from your use of the site or from a repair you attempt. Our total liability for any claim relating to the site is limited to 100 US dollars.</p>
 <h2>Indemnity</h2><p>You agree to indemnify Joshua Israel Ventures LLC against claims arising from your misuse of the site or your breach of these terms.</p>
 <h2>Governing law</h2><p>These terms are governed by the laws of the State of Florida, United States, without regard to conflict of law rules. Courts in Florida have jurisdiction, and you consent to it.</p>
 <h2>Changes</h2><p>We may update these terms. The date above is the latest version. Questions: <a href="/contact/">contact</a>.</p>'''),
         "/privacy/": ("Privacy Policy", f'''<p>Last updated {D}. This policy explains how Which Error Code, whicherrorcode.com, handles information. {LEGAL_LINE}</p>
-<h2>Analytics</h2><p>When the site is on its own domain, we use Cloudflare Web Analytics to count page views. It does not use cookies and it does not track you across other sites. The preview build does not include the analytics script.</p>
+<h2 id="analytics">Analytics</h2><p>When the site is on its own domain, launch pages can load two analytics tools.</p>
+<p>Cloudflare Web Analytics counts page views. It does not use cookies and it does not track you across other sites. The beacon loads with each launch page.</p>
+<p>Google Analytics 4 (GA4) stays off until you accept the banner. Consent Mode v2 starts with analytics storage, ad storage, ad user data, and ad personalization denied. The GA4 script is requested only after you accept. Reject leaves that script unloaded. Cookie settings in the footer opens the same choice. Accept allows analytics storage on this site only. Ad storage stays denied, because the site shows no ads. The preview build does not include the Cloudflare beacon or the GA4 script. The site owner pastes the measurement id into the launch build before those hits are sent.</p>
 <h2>Contact</h2><p>If you email {CONTACT_EMAIL} or use the contact form, we receive your name, email address, and message so we can reply. The form is handled by FormSubmit. We keep messages only as long as we need them to respond.</p>
 <h2>Advertising</h2><p>The site shows no ads today. If we add ads later, we will update this policy first. You would be able to opt out of personalized advertising at Google Ads Settings and aboutads.info. Where the law requires it, we will ask for consent before advertising cookies are set.</p>
-<h2>Cookies</h2><p>Which Error Code itself sets no cookies. The site works if your browser blocks cookies.</p>
+<h2>Cookies</h2><p>These pages do not set their own cookies. Cloudflare Web Analytics does not use cookies. Your banner choice is stored in this browser's local storage, not in a cookie. If you accept Google Analytics 4, Google may set analytics cookies for this site. Choose Reject, or open Cookie settings and reject later, and the GA4 script is not requested.</p>
 <h2>Hosting</h2><p>The site is hosted on GitHub Pages, which may log IP addresses for security.</p>
 <h2>Your rights</h2><p>You can ask us to access, correct, or delete personal information we hold. Use the <a href="/contact/">contact page</a>. Residents of some states and countries have additional rights, which we will honor.</p>
 <h2>Children</h2><p>The site is a general audience site and is not directed at children under 13. We do not knowingly collect personal information from children.</p>
@@ -573,7 +659,7 @@ def about_legal():
     }
     for p, (t, inner) in legal.items():
         body = f'<article class="prose"><h1>{E(t)}</h1>{inner}<p class="legal-line">{LEGAL_LINE}</p></article>'
-        write(p, page(p, f"{t} | {BRAND}", clip(f"{t} for Which Error Code, an independent guide to appliance error codes and water filters."), body, None, [("/", "Home"), (p, t)]))
+        write(p, page(p, f"{t} | {BRAND}", clip(f"{t} for Which Error Code, an independent guide to appliance error codes and water filters."), body, article_ld(t, p), [("/", "Home"), (p, t)]))
 
 def not_found():
     body = '<h1>Page not found</h1><p>That page is not on this site. Try the <a href="/codes/">error code list</a> or the <a href="/filters/">water filter finder</a>.</p>'
@@ -703,6 +789,8 @@ def main():
     extras()
     n = len(set(p for p, _ in PAGES))
     print(n, "sitemap urls", "LAUNCH" if LAUNCH else "PREVIEW noindex")
+    if LAUNCH and not re.fullmatch(r"G-[A-Z0-9]+", GA4_ID or ""):
+        print("GA4_ID is empty. check.py --launch fails until it is a G- measurement id.")
 
 if __name__ == "__main__":
     main()
