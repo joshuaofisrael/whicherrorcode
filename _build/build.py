@@ -21,6 +21,11 @@ BASE = "https://whicherrorcode.com/"
 BRAND = "Which Error Code"
 TODAY = "2026-11-16"
 TODAY_H = "16 Nov 2026"
+# TODAY2 is the date of the 18 Nov 2026 update (new GE oven coverage). Only pages whose
+# content changed that day use it; everything else keeps the original TODAY/TODAY_H so an
+# unrelated rebuild does not manufacture freshness on pages nothing happened to.
+TODAY2 = "2026-11-18"
+TODAY2_H = "18 Nov 2026"
 INDEXNOW_KEY = "e5e7fc4f0a0e96a11d330aa8cf3cba1c"
 CF_BEACON_TOKEN = "eac63f2b5dbc4539a2d95249baab6472"
 FORM_ENDPOINT = "https://formsubmit.co/joshuaofisrael@gmail.com"
@@ -66,7 +71,7 @@ def link(pair):
 def crumbs_for(items):
     return items
 
-def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, robots_extra=False):
+def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, robots_extra=False, lastmod=None):
     desc = clip(desc)
     canon = url(path if path != "/404.html" else "/")
     if path == "/404.html":
@@ -75,7 +80,7 @@ def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, robot
     # Real pages stay in the sitemap. The noindex flag is separate and flips at launch.
     # 404 and other utility pages pass noindex=True and stay out.
     if path != "/404.html" and not noindex:
-        PAGES.append((path, TODAY))
+        PAGES.append((path, lastmod or TODAY))
     blocks = jsonld if isinstance(jsonld, list) else ([jsonld] if jsonld else [])
     og_type = "article" if any(isinstance(x, dict) and x.get("@type") == "Article" for x in blocks) else "website"
     ld = []
@@ -134,9 +139,9 @@ def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, robot
 <!-- noindex-flag: {flag} -->
 </body></html>'''
 
-def article_ld(headline, path, about=None):
+def article_ld(headline, path, about=None, published=None, modified=None):
     data = {"@context": "https://schema.org", "@type": "Article", "headline": headline,
-            "datePublished": TODAY, "dateModified": TODAY,
+            "datePublished": published or TODAY, "dateModified": modified or TODAY,
             "author": {"@type": "Organization", "name": BRAND, "url": BASE},
             "publisher": {"@type": "Organization", "name": BRAND, "url": BASE, "logo": {"@type": "ImageObject", "url": url("/logo.png")}},
             "image": url("/og.png"), "mainEntityOfPage": url(path)}
@@ -160,8 +165,8 @@ SAFETY = '''<aside class="safety"><h2>Safety before any check</h2>
 <p>Unplug the appliance or switch off its breaker before you move it, open a panel, or clean a filter. If it uses gas, shut the gas supply off before you go past the checks the manufacturer published. Do not open a gas valve, an igniter, or a gas line.</p>
 <p>If you smell gas, leave the area and contact your gas utility or emergency services. If water is reaching the floor, shut the supply valve off. Stop and call a technician when the code returns, when the manufacturer says service is required, or when the check is not on the cited page.</p></aside>'''
 
-def byline():
-    return f'<p class="byline">By {BRAND}. Last verified {TODAY_H}.</p>'
+def byline(date_h=None):
+    return f'<p class="byline">By {BRAND}. Last verified {date_h or TODAY_H}.</p>'
 
 def slug_code(code):
     s = code.lower().replace(" ", "-").replace("/", "-").replace(":", "")
@@ -207,7 +212,8 @@ def safety_for(r):
         extra = "<p>Samsung's refrigerator code page says not to unplug the refrigerator, and not to press buttons to hide a code, unless the steps for that code tell you to. Unplugging can make the fault harder to diagnose. The unplug step in the box above is for checks that require you to move the cabinet or open a panel.</p>"
     return SAFETY + extra
 
-def code_page(r):
+def code_page(r, new=False):
+    d, dh = (TODAY2, TODAY2_H) if new else (TODAY, TODAY_H)
     path = code_path(r)
     b, a = BNAME[r["brand"]], ANAME[r["appl"]]
     title = f"{b} {a} {r['code']} Error Code"
@@ -231,7 +237,7 @@ def code_page(r):
         (f"When should I call a technician for {r['code']}?", r["service"]),
     ]
     body = f'''<article class="prose wide"><h1>{E(b)} {E(a.lower())} code {E(r["code"])}</h1>
-{byline()}
+{byline(dh)}
 <div class="answer"><p><strong>Meaning:</strong> {E(r["meaning"])}</p></div>
 {aliases}{extra}
 {safety_for(r)}
@@ -239,14 +245,15 @@ def code_page(r):
 <h2>When to call a technician</h2><p>{E(r["service"])}</p>
 {water}
 {faq_html(faqs)}
-{sources_html(r["sources"], f"Retrieved {TODAY_H}. Models differ. If your manual defines this code differently, the manual wins. {BRAND} is not affiliated with {E(b)}.")}
+{sources_html(r["sources"], f"Retrieved {dh}. Models differ. If your manual defines this code differently, the manual wins. {BRAND} is not affiliated with {E(b)}.")}
 {more}
 <p><a href="{listing_path(r["brand"], r["appl"])}">All {E(b)} {E(a.lower())} codes</a> · <a href="/brands/{r["brand"]}/">{E(b)}</a> · <a href="/appliances/{APLUR[r["appl"]]}/">{E(a)} brands</a> · <a href="/guides/safety/">Safety notes</a> · <a href="/codes/">All error codes</a></p>
 </article>'''
-    write(path, page(path, title, desc, body, [article_ld(f"{b} {a.lower()} code {r['code']}", path, f"{b} {r['code']}"), faq_ld(faqs)],
-                    [("/", "Home"), ("/codes/", "Error codes"), (listing_path(r["brand"], r["appl"]), f"{b} {a}"), (path, r["code"])]))
+    write(path, page(path, title, desc, body, [article_ld(f"{b} {a.lower()} code {r['code']}", path, f"{b} {r['code']}", published=d, modified=d), faq_ld(faqs)],
+                    [("/", "Home"), ("/codes/", "Error codes"), (listing_path(r["brand"], r["appl"]), f"{b} {a}"), (path, r["code"])], lastmod=d))
 
-def listing_page(brand, appl, rows):
+def listing_page(brand, appl, rows, new=False):
+    d, dh = (TODAY2, TODAY2_H) if new else (TODAY, TODAY_H)
     path = listing_path(brand, appl)
     b, a = BNAME[brand], ANAME[appl]
     bits = []
@@ -265,20 +272,20 @@ def listing_page(brand, appl, rows):
     if brand == "samsung" and appl == "refrigerator":
         fridge_note = "<p>Samsung's refrigerator code page says not to unplug the refrigerator, and not to clear a code from the panel, unless the steps for that code say to. The unplug line above is for when you have to move the cabinet.</p>"
     body = f'''<article class="prose wide"><h1>{E(b)} {E(a.lower())} error codes</h1>
-{byline()}
+{byline(dh)}
 <div class="answer"><p>These are the {E(b)} {E(a.lower())} codes we could verify on the manufacturer's own page. Each block says what the code means, the checks that page allows, and when it says to call a technician.</p></div>
 {SAFETY}<p>{E(gas).strip()}</p>{fridge_note}
 {"".join(bits)}
 {faq_html(faqs)}
-{sources_html(unique_sources(rows), f"Retrieved {TODAY_H}. {BRAND} is not affiliated with {E(b)}. Names identify the appliance only.")}
+{sources_html(unique_sources(rows), f"Retrieved {dh}. {BRAND} is not affiliated with {E(b)}. Names identify the appliance only.")}
 <p><a href="/brands/{brand}/">All {E(b)} pages</a> · <a href="/appliances/{APLUR[appl]}/">All {E(a.lower())} brands</a> · <a href="/filters/">Water filters</a></p>
 </article>'''
     # fix empty gas paragraph
     body = body.replace("<p></p>", "")
     desc = f"{b} {a.lower()} error codes: what each code means, the safe checks the manufacturer publishes, and when to call a technician."
     write(path, page(path, f"{b} {a} Error Codes", desc, body,
-                    [article_ld(f"{b} {a.lower()} error codes", path, f"{b} {a}"), faq_ld(faqs)],
-                    [("/", "Home"), ("/codes/", "Error codes"), (path, f"{b} {a}")]))
+                    [article_ld(f"{b} {a.lower()} error codes", path, f"{b} {a}", published=d, modified=d), faq_ld(faqs)],
+                    [("/", "Home"), ("/codes/", "Error codes"), (path, f"{b} {a}")], lastmod=d))
 
 def rcode(rows):
     return rows[0]["code"]
@@ -308,8 +315,10 @@ def brand_pages():
             (f"Why is a {name} code missing?",
              "A code is missing when it was not on the manufacturer page we checked. We do not add codes from repair blogs or from another brand."),
         ]
+        # ge gained an oven listing on 18 Nov 2026; every other brand page is unchanged from 16 Nov.
+        dh, lm = (TODAY2_H, TODAY2) if slug == "ge" else (None, None)
         body = f'''<article class="prose"><h1>{E(name)} error codes</h1>
-{byline()}
+{byline(dh)}
 <p class="answer">Pick the appliance. Every code is cited to a {E(name)} manual or support page. We leave out codes we have not checked on that page.</p>
 <ul class="cols">{"".join(items)}</ul>
 {faq_html(faqs)}
@@ -317,8 +326,8 @@ def brand_pages():
         path = f"/brands/{slug}/"
         covered = [ANAME[appl].lower() for appl, _, _ in APPLS if any(r["brand"] == slug and r["appl"] == appl for r in ROWS)]
         write(path, page(path, f"{name} Appliance Error Codes", f"{name} error codes we verified: {', '.join(covered)}. Each code is cited to a {name} support page.",
-                        body, [article_ld(f"{name} error codes", path, name), faq_ld(faqs)],
-                        [("/", "Home"), ("/brands/", "Brands"), (path, name)]))
+                        body, [article_ld(f"{name} error codes", path, name, modified=lm), faq_ld(faqs)],
+                        [("/", "Home"), ("/brands/", "Brands"), (path, name)], lastmod=lm))
     cards = []
     for slug, name in BRANDS:
         labels = []
@@ -331,18 +340,19 @@ def brand_pages():
         ("Which brand should I pick?",
          "Pick the name printed on the appliance. A code is published here only after we read it on that manufacturer's support page or manual."),
         ("Which brands or machines are missing?",
-         "Frigidaire pages are not in this version. We did not find a Frigidaire.com code list we could cite code by code. Bosch ranges, refrigerators, and dryers, KitchenAid washers and dryers, and GE ovens are in the same gap."),
+         "Frigidaire pages are not in this version. We did not find a Frigidaire.com code list we could cite code by code. Bosch ranges, refrigerators, and dryers, and KitchenAid washers and dryers are in the same gap."),
     ]
+    # Content changed 18 Nov 2026: the GE oven gap note was removed from this hub.
     body = f'''<article class="prose"><h1>Error codes by brand</h1>
-{byline()}
+{byline(TODAY2_H)}
 <p class="answer">Choose a brand. We publish a code only after reading it on that manufacturer's support page or manual.</p>
 <ul class="cards">{"".join(cards)}</ul>
-<p>Frigidaire pages are not in this version. We did not find a Frigidaire.com code list we could cite code by code. Bosch ranges, refrigerators, and dryers, KitchenAid washers and dryers, and GE ovens are in the same gap.</p>
+<p>Frigidaire pages are not in this version. We did not find a Frigidaire.com code list we could cite code by code. Bosch ranges, refrigerators, and dryers, and KitchenAid washers and dryers are in the same gap.</p>
 {faq_html(faqs)}
 <p><a href="/codes/">All error codes</a> · <a href="/appliances/">By appliance</a> · <a href="/guides/safety/">Safety notes</a></p></article>'''
     write("/brands/", page("/brands/", f"Appliance Error Codes by Brand | {BRAND}", "Samsung, LG, GE Appliances, Whirlpool, Maytag, KitchenAid, and Bosch error codes, each cited to the manufacturer.",
-                          body, [article_ld("Error codes by brand", "/brands/"), faq_ld(faqs)],
-                          [("/", "Home"), ("/brands/", "Brands")]))
+                          body, [article_ld("Error codes by brand", "/brands/", modified=TODAY2), faq_ld(faqs)],
+                          [("/", "Home"), ("/brands/", "Brands")], lastmod=TODAY2))
 
 def appliance_pages():
     for appl, an, plural in APPLS:
@@ -360,8 +370,10 @@ def appliance_pages():
              "Only the checks written on that brand's page, taken from the manufacturer. Unplug the appliance or switch off the breaker before you move it or open a panel. If it uses gas, shut the gas supply off before any step the manufacturer did not publish."),
         ]
         related = '<p>A filter part number is not an error code. <a href="/filters/">Which water filter fits</a> is a separate page.</p>' if appl == "refrigerator" else ""
+        # the oven listing gained a GE card on 18 Nov 2026; the other appliance pages are unchanged.
+        dh, lm = (TODAY2_H, TODAY2) if appl == "oven" else (None, None)
         body = f'''<article class="prose"><h1>{E(an)} error codes</h1>
-{byline()}
+{byline(dh)}
 <p class="answer">Brand pages for {E(an.lower())} codes we verified. The same letters can mean different things on another brand, so start with the name on the appliance.</p>
 <ul class="cards">{"".join(items)}</ul>
 {related}
@@ -369,8 +381,8 @@ def appliance_pages():
 <p><a href="/appliances/">All appliance types</a> · <a href="/codes/">All error codes</a> · <a href="/guides/safety/">Unplug and gas shutoff</a></p></article>'''
         path = f"/appliances/{plural}/"
         write(path, page(path, f"{an} Error Codes by Brand", f"{an} error codes for the brands we have checked, with the manufacturer's meaning and the safe checks.",
-                        body, [article_ld(f"{an} error codes", path, an), faq_ld(faqs)],
-                        [("/", "Home"), ("/appliances/", "Appliances"), (path, plural.capitalize())]))
+                        body, [article_ld(f"{an} error codes", path, an, modified=lm), faq_ld(faqs)],
+                        [("/", "Home"), ("/appliances/", "Appliances"), (path, plural.capitalize())], lastmod=lm))
     cards = "".join(f'<li class="card"><h2><a href="/appliances/{p}/">{E(n)}s</a></h2><p>Codes for {E(n.lower())}s, brand by brand.</p></li>' for _, n, p in APPLS)
     # Wait, ANAME already includes the noun "Washer" and plural path is washers. Card title "Washers" from path. Fix: use plural from path capitalized properly.
     cards = []
@@ -404,18 +416,19 @@ def codes_index(search_json):
         ("Which source is a code based on?",
          "Each code page links the manufacturer page it was read from. If the code is not on that page, it is not on this site."),
     ]
+    # A Loc Door link was added here 18 Nov 2026, so this hub's retrieved/modified date moves.
     body = f'''<article class="prose wide"><h1>Appliance error code pages</h1>
-{byline()}
+{byline(TODAY2_H)}
 <p class="answer">One page for each brand and appliance we have checked, plus a page for the codes people look up most often. Search from the <a href="/">home page</a>.</p>
 <h2>By brand</h2><ul class="cols">{"".join(f'<li><a href="/brands/{s}/">{E(n)}</a></li>' for s, n in BRANDS)}</ul>
 <h2>By appliance</h2><ul class="cols">{"".join(f'<li><a href="/appliances/{p}/">{E(p.capitalize())}</a></li>' for _, _, p in APPLS)}</ul>
 <h2>Single codes</h2><ul class="cols">{"".join(rows)}</ul>
-<p class="note">Each code page links the manufacturer page it was read from. Retrieved {TODAY_H}.</p>
+<p class="note">Each code page links the manufacturer page it was read from. Retrieved {TODAY2_H}.</p>
 <section class="sources"><h2>Sources</h2><ul><li><a href="https://www.samsung.com/us/support/troubleshoot/TSG10000997/" rel="nofollow noopener" target="_blank">Samsung washer error codes</a></li><li><a href="https://www.lg.com/us/support/help-library/lg-front-load-washer-error-code-list--20155069413456" rel="nofollow noopener" target="_blank">LG washer error codes</a></li><li><a href="https://products.geappliances.com/appliance/gea-support-search-content?contentId=16912" rel="nofollow noopener" target="_blank">GE Appliances refrigerator fault codes</a></li></ul><p class="note">The full citation list is on each code page.</p></section>
 {faq_html(faqs)}</article>'''
     write("/codes/", page("/codes/", f"Appliance Error Code List | {BRAND}", "Browse verified washer, dryer, dishwasher, refrigerator, and oven error codes by brand.",
-                         body, [article_ld("Appliance error code pages", "/codes/"), faq_ld(faqs)],
-                         [("/", "Home"), ("/codes/", "Error codes")]))
+                         body, [article_ld("Appliance error code pages", "/codes/", modified=TODAY2), faq_ld(faqs)],
+                         [("/", "Home"), ("/codes/", "Error codes")], lastmod=TODAY2))
 
 def home(search_json):
     faqs = [
@@ -444,7 +457,8 @@ def home(search_json):
 <h2>How a page is built</h2><p>We open the manufacturer page, record the code and the checks written there, and link that page. If a code is not on the page, it is not here. Names are plain text. There are no logos and no claim that a brand sponsors this site. <a href="/methodology/">Sources and methods</a>.</p>
 {faq_html(faqs)}'''
     desc = "Look up washer, dryer, dishwasher, refrigerator, and oven error codes, plus the official fridge water filter number. Cited to the manufacturer."
-    write("/", page("/", f"{BRAND}: Appliance Error Codes and Water Filters", desc, body, faq_ld(faqs)))
+    # The GE brand card gained an Oven link on 18 Nov 2026 once GE oven codes were added.
+    write("/", page("/", f"{BRAND}: Appliance Error Codes and Water Filters", desc, body, faq_ld(faqs), lastmod=TODAY2))
 
 def filter_pages():
     by = {f["slug"]: f for f in FILTERS}
@@ -721,7 +735,7 @@ def extras():
             f.write(f"<url><loc>{url(p)}</loc><lastmod>{m}</lastmod></url>\n")
         f.write("</urlset>\n")
     lines = [f"# {BRAND}", "",
-             f"> Which Error Code (whicherrorcode.com) explains home appliance error codes and official refrigerator water filter numbers. Every code is cited to the manufacturer. Last verified {TODAY_H}.",
+             f"> Which Error Code (whicherrorcode.com) explains home appliance error codes and official refrigerator water filter numbers. Every code is cited to the manufacturer. Last verified {TODAY2_H}.",
              "",
              "Independent. Not affiliated with any appliance maker. Unplug the appliance and shut off the gas before any inspection past the published checks.",
              "",
@@ -765,16 +779,19 @@ def search_index():
     return json.dumps(data, ensure_ascii=False)
 
 def main():
+    # The ge/oven group and its Loc Door page were added 18 Nov 2026; they are brand new
+    # URLs and use TODAY2 for published/modified/lastmod. Every other page is unchanged
+    # from the 16 Nov 2026 build and keeps the original TODAY date.
     for r in ROWS:
         if r["individual"]:
-            code_page(r)
+            code_page(r, new=(r["brand"] == "ge" and r["appl"] == "oven"))
     seen = []
     for brand, appl, rows in GROUPS:
         enriched = []
         for row in rows:
             match = next(r for r in ROWS if r["brand"] == brand and r["appl"] == appl and r["code"] == row["code"])
             enriched.append(match)
-        listing_page(brand, appl, enriched)
+        listing_page(brand, appl, enriched, new=(brand == "ge" and appl == "oven"))
         seen.append((brand, appl))
     brand_pages()
     appliance_pages()

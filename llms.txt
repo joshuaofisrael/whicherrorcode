@@ -1,6 +1,6 @@
 # Which Error Code
 
-> Which Error Code (whicherrorcode.com) explains home appliance error codes and official refrigerator water filter numbers. Every code is cited to the manufacturer. Last verified 16 Nov 2026.
+> Which Error Code (whicherrorcode.com) explains home appliance error codes and official refrigerator water filter numbers. Every code is cited to the manufacturer. Last verified 18 Nov 2026.
 
 Independent. Not affiliated with any appliance maker. Unplug the appliance and shut off the gas before any inspection past the published checks.
 
@@ -25,6 +25,7 @@ Independent. Not affiliated with any appliance maker. Unplug the appliance and s
 - [GE Appliances dryer codes](https://whicherrorcode.com/codes/ge/dryer/)
 - [GE Appliances dishwasher codes](https://whicherrorcode.com/codes/ge/dishwasher/)
 - [GE Appliances refrigerator codes](https://whicherrorcode.com/codes/ge/refrigerator/)
+- [GE Appliances oven codes](https://whicherrorcode.com/codes/ge/oven/)
 - [Whirlpool washer codes](https://whicherrorcode.com/codes/whirlpool/washer/)
 - [Whirlpool dryer codes](https://whicherrorcode.com/codes/whirlpool/dryer/)
 - [Whirlpool dishwasher codes](https://whicherrorcode.com/codes/whirlpool/dishwasher/)
@@ -108,6 +109,7 @@ Independent. Not affiliated with any appliance maker. Unplug the appliance and s
 - [GE Appliances refrigerator CI](https://whicherrorcode.com/codes/ge/refrigerator/ci/)
 - [GE Appliances refrigerator DE](https://whicherrorcode.com/codes/ge/refrigerator/demo/)
 - [GE Appliances refrigerator dE](https://whicherrorcode.com/codes/ge/refrigerator/de/)
+- [GE Appliances oven Loc Door](https://whicherrorcode.com/codes/ge/oven/loc-door/)
 - [Whirlpool washer F9 E1](https://whicherrorcode.com/codes/whirlpool/washer/f9-e1/)
 - [Whirlpool washer F21](https://whicherrorcode.com/codes/whirlpool/washer/f21/)
 - [Whirlpool dryer F1 E1](https://whicherrorcode.com/codes/whirlpool/dryer/f1-e1/)
