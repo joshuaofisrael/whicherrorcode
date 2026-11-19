@@ -26,12 +26,18 @@ TODAY_H = "16 Nov 2026"
 # unrelated rebuild does not manufacture freshness on pages nothing happened to.
 TODAY2 = "2026-11-18"
 TODAY2_H = "18 Nov 2026"
+# TODAY3 is the date of the 19 Nov 2026 update (AdSense readiness + safety refresh + LG oven).
+# Only pages whose content changed that day use it; unrelated rebuilds must not manufacture freshness.
+TODAY3 = "2026-11-19"
+TODAY3_H = "19 Nov 2026"
 INDEXNOW_KEY = "e5e7fc4f0a0e96a11d330aa8cf3cba1c"
 CF_BEACON_TOKEN = "eac63f2b5dbc4539a2d95249baab6472"
 FORM_ENDPOINT = "https://formsubmit.co/joshuaofisrael@gmail.com"
 CONTACT_EMAIL = "joshuaofisrael@gmail.com"
 # Public GA4 measurement id. Empty until the owner pastes G-XXXXXXXXXX. Not a secret.
 GA4_ID = "G-MNR4EL37WN"
+# AdSense publisher id. Head script + meta only; no ad units until approval.
+ADSENSE_CLIENT = "ca-pub-5681559774142917"
 LEGAL_LINE = "Which Error Code is a trade name of Joshua Israel Ventures LLC, a Florida limited liability company."
 E = html.escape
 PAGES = []
@@ -110,6 +116,11 @@ def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, robot
             "gtag('consent','default',{'ad_storage':'denied','ad_user_data':'denied','ad_personalization':'denied','analytics_storage':'denied','wait_for_update':500});</script>"
             f'<script src="/assets/consent.js?v=1" defer data-ga4-loader="1" data-ga4-id="{E(GA4_ID)}" data-ga4-src="https://www.googletagmanager.com/gtag/js"></script>'
         )
+        # Publisher verification only: client script + account meta, no ad units on the page.
+        adsense = (
+            f'<meta name="google-adsense-account" content="{E(ADSENSE_CLIENT)}">'
+            f'<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={E(ADSENSE_CLIENT)}" crossorigin="anonymous"></script>'
+        )
         banner = (
             '<div id="cookie-banner" class="cookie-banner" role="region" aria-label="Cookie choices" hidden>'
             '<p>Google Analytics 4 stays off until you accept. Cloudflare Web Analytics does not use cookies.</p>'
@@ -119,6 +130,7 @@ def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, robot
     else:
         beacon = "<!-- cf-beacon: added by launch build -->"
         ga4 = ""
+        adsense = ""
         banner = ""
     flag = "on" if NOINDEX else "off"
     legal = ""
@@ -127,7 +139,7 @@ def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, robot
 <title>{E(title)}</title><meta name="description" content="{E(desc)}"><link rel="canonical" href="{canon}">
 <meta name="robots" content="{robots}">
 <meta property="og:type" content="{og_type}"><meta property="og:site_name" content="{BRAND}"><meta property="og:title" content="{E(title)}"><meta property="og:description" content="{E(desc)}"><meta property="og:url" content="{canon}"><meta property="og:image" content="{url('/og.png')}"><meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/style.css?v=2">{ga4}{ldh}
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/style.css?v=3">{adsense}{ga4}{ldh}
 </head><body><a class="skip" href="#main">Skip to content</a>
 <header class="site"><div class="wrap"><a class="brand" href="/">{LOGO}<span>{BRAND}</span></a><nav class="main" aria-label="Main">{nav}</nav></div></header>
 <main id="main" class="wrap">{bc}{body}<!-- ad-slot: below-content (reserved; no ad code) --></main>
@@ -167,6 +179,46 @@ SAFETY = '''<aside class="safety"><h2>Safety before any check</h2>
 
 def byline(date_h=None):
     return f'<p class="byline">By {BRAND}. Last verified {date_h or TODAY_H}.</p>'
+
+def article_thumb(src, alt, caption="AI-generated image"):
+    """One news-photo style thumbnail; caption links to the image policy. Skip if src is empty."""
+    if not src:
+        return ""
+    return (
+        f'<figure class="article-thumb"><a href="/image-policy/">'
+        f'<img src="{E(src)}" alt="{E(alt)}" width="960" height="540" loading="lazy">'
+        f'</a><figcaption><a href="/image-policy/">{E(caption)}</a></figcaption></figure>'
+    )
+
+def compare_box(title, links, lead=None):
+    """Lookup/compare box for code and filter pages. links = [(href, label), ...]."""
+    lead_html = f"<p>{E(lead)}</p>" if lead else ""
+    items = "".join(f'<li><a href="{E(href)}">{E(label)}</a></li>' for href, label in links)
+    return (
+        f'<aside class="compare" aria-label="{E(title)}"><h2>{E(title)}</h2>'
+        f"{lead_html}<ul>{items}</ul></aside>"
+    )
+
+def next_reads(items, heading="Keep reading", hid="nr-h"):
+    """Related next-read cards. items = [(href, title, blurb, img_or_None), ...]."""
+    if not items:
+        return ""
+    cards = []
+    for href, title, blurb, img in items:
+        thumb = ""
+        if img:
+            thumb = (
+                f'<a class="nr-thumb" href="{E(href)}" tabindex="-1" aria-hidden="true">'
+                f'<img src="{E(img)}" alt="" width="320" height="180" loading="lazy"></a>'
+            )
+        cards.append(
+            f'<li>{thumb}<div><a href="{E(href)}"><strong>{E(title)}</strong></a>'
+            f"<p>{E(blurb)}</p></div></li>"
+        )
+    return (
+        f'<section class="next-reads" aria-labelledby="{E(hid)}"><h2 id="{E(hid)}">{E(heading)}</h2>'
+        f'<ul>{"".join(cards)}</ul></section>'
+    )
 
 def slug_code(code):
     s = code.lower().replace(" ", "-").replace("/", "-").replace(":", "")
@@ -553,31 +605,59 @@ def guide_safety():
     faqs = [
         ("Should I unplug the appliance before I look up a code?", "You can read the code with the appliance on. Unplug it, or switch off the breaker, before you pull it out, remove a panel, or clean a filter."),
         ("When do I shut the gas off?", "Shut the gas supply off before any inspection past the checks the manufacturer published for that code. Do not open a gas valve, igniter, or gas line. If you smell gas, leave and call your gas utility."),
+        ("Does a range need an anti-tip bracket?", "Yes for freestanding and slide-in ranges that ship with one. The U.S. Consumer Product Safety Commission (CPSC) says to confirm the bracket is fixed to the wall or floor and that the range stays engaged in it, and not to stand on an open oven door or put heavy items on it."),
         ("The code is not on this site. What now?", "Use the manual for your model or the manufacturer's support page. We would rather omit a code than guess. You can send us the model and the official page from the contact form."),
     ]
+    mid_reads = next_reads([
+        ("/appliances/ovens/", "Oven error codes by brand", "Samsung, GE Appliances, Whirlpool, and other oven hubs on this site.", None),
+        ("/codes/ge/oven/", "GE Appliances oven codes", "F0, Loc Door, Bad Line, and the other GE oven codes we verified.", None),
+        ("/codes/samsung/oven/", "Samsung oven codes", "C-24, C-F0, door, and the other Samsung range codes we verified.", None),
+    ], "Related oven pages", hid="nr-mid")
+    end_reads = next_reads([
+        ("/codes/whirlpool/oven/", "Whirlpool oven F1 E1", "Whirlpool's published reset for range F1 E1, and when it says to call service.", None),
+        ("/brands/lg/", "LG error codes", "LG washer, dryer, dishwasher, and refrigerator codes already on this site.", None),
+        ("/codes/", "All error code pages", "Browse every brand and appliance listing we have checked.", None),
+        ("/filters/", "Refrigerator water filter finder", "Official cartridge numbers only, cited to the manufacturer.", None),
+    ], "Keep reading", hid="nr-end")
+    compare = compare_box(
+        "Check another appliance type",
+        [
+            ("/appliances/ovens/", "Oven and range codes"),
+            ("/appliances/dryers/", "Dryer codes (gas shutoff notes)"),
+            ("/appliances/washers/", "Washer codes"),
+            ("/codes/", "All brands and codes"),
+        ],
+        "Safety steps differ by machine. Open the type that matches yours, then the brand printed on it.",
+    )
     body = f'''<article class="prose"><h1>Safety notes for error codes</h1>
-{byline()}
-<p class="answer">Read the code, then do only the checks the manufacturer published. Unplug the appliance before you move it. Shut the gas off before you go further on a gas dryer or range.</p>
+{byline(TODAY3_H)}
+<p class="answer">Read the code, then do only the checks the manufacturer published. Unplug the appliance before you move it. Shut the gas off before you go further on a gas dryer or range. On a freestanding range, confirm the anti-tip bracket before you pull the unit out.</p>
 {SAFETY}
 <h2>Electricity</h2>
 <p>Many resets on the cited pages are a short power cut at the plug or the breaker. That is a control reset, not a repair. Do not bypass a breaker or a lid lock. A washer or dishwasher that is full of water can still be dangerous after you unplug it. Let hot water cool before you open a drain filter. Samsung and Bosch both warn that drain water can still be hot.</p>
 <h2>Gas</h2>
-<p>Gas dryers and gas ranges need the supply valve shut off before any inspection past the published check. LG's gAS code, for example, only tells you to confirm the valve is on and the line is not kinked. It does not tell you to open the burner. If you smell gas, do not look for the leak with a flame or a spark. Leave and call the gas utility.</p>
+<p>Gas dryers and gas ranges need the supply valve shut off before any inspection past the published check. <a href="/brands/lg/">LG</a>'s gAS dryer code, for example, only tells you to confirm the valve is on and the line is not kinked. It does not tell you to open the burner. If you smell gas, do not look for the leak with a flame or a spark. Leave and call the gas utility.</p>
+{compare}
+<h2>Range tip-over (CPSC)</h2>
+<p>Before you slide a freestanding or slide-in range out to read a label or clear a vent, check the anti-tip bracket. The <a href="https://www.cpsc.gov/s3fs-public/5007.pdf" rel="nofollow noopener" target="_blank">U.S. Consumer Product Safety Commission range tip-over alert (Publication 5007)</a> says the bracket should be fixed to the wall or floor and the range should stay held in it. CPSC also says not to leave children unsupervised in the kitchen, not to put heavy items on an open oven door, and not to use the open door as a step or to stand. If the bracket is missing, ask the range maker whether your model should have one. Some makers will send a replacement. This site does not publish gas line, sealed system, or electrical repair steps past the manufacturer checks on each code page.</p>
+{mid_reads}
 <h2>Water</h2>
 <p>If a code means a leak or an overfill, shut the supply valve. Do not keep the cycle running. A filter part number is a separate question from a sensor code. Use the <a href="/filters/">filter finder</a> only for cartridges the manufacturer names.</p>
 <h2>Refrigerators</h2>
 <p>Samsung's refrigerator code page says not to unplug the refrigerator, and not to clear the code from the panel, unless the steps for that code say to. Food safety matters if the freezer is warm. Move food when a code such as GE FF says the temperature is rising.</p>
 {faq_html(faqs)}
 {sources_html([
+    ("U.S. CPSC: Range Tipover Safety Alert (Publication 5007)", "https://www.cpsc.gov/s3fs-public/5007.pdf"),
     ("Samsung refrigerator error codes", "https://www.samsung.com/us/support/troubleshoot/TSG10007315/"),
     ("LG dryer error codes, including gAS", "https://www.lg.com/us/support/help-library/lg-dryer-error-code-list--20154710772482"),
     ("Samsung washer will not drain", "https://www.samsung.com/us/support/troubleshoot/TSG10007110/"),
-], f"Retrieved {TODAY_H}.")}
-<p><a href="/codes/">Browse error codes</a></p>
+], f"Retrieved {TODAY3_H}. CPSC Publication 5007 checked {TODAY3_H}.")}
+{end_reads}
+<p><a href="/codes/">Browse error codes</a> · <a href="/appliances/ovens/">Oven brands</a> · <a href="/methodology/">Sources and methods</a></p>
 </article>'''
-    write("/guides/safety/", page("/guides/safety/", f"Appliance Error Code Safety | {BRAND}", "Unplug the appliance and shut off the gas before you go past the manufacturer's published checks.",
-                                 body, [article_ld("Appliance error code safety", "/guides/safety/"), faq_ld(faqs)],
-                                 [("/", "Home"), ("/guides/safety/", "Safety")]))
+    write("/guides/safety/", page("/guides/safety/", f"Appliance Error Code Safety | {BRAND}", "Unplug, shut off gas, and check the range anti-tip bracket before you go past the manufacturer's published checks.",
+                                 body, [article_ld("Appliance error code safety", "/guides/safety/", published=TODAY, modified=TODAY3), faq_ld(faqs)],
+                                 [("/", "Home"), ("/guides/safety/", "Safety")], lastmod=TODAY3))
 
 def simple(path, title, desc, h1, inner, crumb, faqs=None):
     ld = [article_ld(h1, path)]
@@ -647,13 +727,14 @@ def about_legal():
 <h2>Indemnity</h2><p>You agree to indemnify Joshua Israel Ventures LLC against claims arising from your misuse of the site or your breach of these terms.</p>
 <h2>Governing law</h2><p>These terms are governed by the laws of the State of Florida, United States, without regard to conflict of law rules. Courts in Florida have jurisdiction, and you consent to it.</p>
 <h2>Changes</h2><p>We may update these terms. The date above is the latest version. Questions: <a href="/contact/">contact</a>.</p>'''),
-        "/privacy/": ("Privacy Policy", f'''<p>Last updated {D}. This policy explains how Which Error Code, whicherrorcode.com, handles information. {LEGAL_LINE}</p>
+        "/privacy/": ("Privacy Policy", f'''<p>Last updated {TODAY3_H}. This policy explains how Which Error Code, whicherrorcode.com, handles information. {LEGAL_LINE}</p>
 <h2 id="analytics">Analytics</h2><p>When the site is on its own domain, launch pages can load two analytics tools.</p>
 <p>Cloudflare Web Analytics counts page views. It does not use cookies and it does not track you across other sites. The beacon loads with each launch page.</p>
-<p>Google Analytics 4 (GA4) stays off until you accept the banner. Consent Mode v2 starts with analytics storage, ad storage, ad user data, and ad personalization denied. The GA4 script is requested only after you accept. Reject leaves that script unloaded. Cookie settings in the footer opens the same choice. Accept allows analytics storage on this site only. Ad storage stays denied, because the site shows no ads. The preview build does not include the Cloudflare beacon or the GA4 script. The site owner pastes the measurement id into the launch build before those hits are sent.</p>
+<p>Google Analytics 4 (GA4) stays off until you accept the banner. Consent Mode v2 starts with analytics storage, ad storage, ad user data, and ad personalization denied. The GA4 script is requested only after you accept. Reject leaves that script unloaded. Cookie settings in the footer opens the same choice. Accept allows analytics storage on this site only. Ad storage, ad user data, and ad personalization stay denied until we show ad units that need them. The preview build does not include the Cloudflare beacon or the GA4 script. The site owner pastes the measurement id into the launch build before those hits are sent.</p>
 <h2>Contact</h2><p>If you email {CONTACT_EMAIL} or use the contact form, we receive your name, email address, and message so we can reply. The form is handled by FormSubmit. We keep messages only as long as we need them to respond.</p>
-<h2>Advertising</h2><p>The site shows no ads today. If we add ads later, we will update this policy first. You would be able to opt out of personalized advertising at Google Ads Settings and aboutads.info. Where the law requires it, we will ask for consent before advertising cookies are set.</p>
-<h2>Cookies</h2><p>These pages do not set their own cookies. Cloudflare Web Analytics does not use cookies. Your banner choice is stored in this browser's local storage, not in a cookie. If you accept Google Analytics 4, Google may set analytics cookies for this site. Choose Reject, or open Cookie settings and reject later, and the GA4 script is not requested.</p>
+<h2 id="advertising">Advertising</h2><p>Which Error Code uses Google AdSense for future display advertising. Launch pages include the AdSense account meta tag and the AdSense script for publisher verification (publisher id {ADSENSE_CLIENT}). This version does not place ad units on the page, so you should not see ads in the article body yet.</p>
+<p>When ad units go live, Consent Mode will keep ad storage denied until you accept advertising cookies where the law requires that choice. You can opt out of personalized advertising at Google Ads Settings and aboutads.info. See the <a href="/ad-disclosure/">advertising disclosure</a> and the site <a href="/ads.txt">ads.txt</a> file.</p>
+<h2>Cookies</h2><p>These pages do not set their own cookies. Cloudflare Web Analytics does not use cookies. Your banner choice is stored in this browser's local storage, not in a cookie. If you accept Google Analytics 4, Google may set analytics cookies for this site. Choose Reject, or open Cookie settings and reject later, and the GA4 script is not requested. The AdSense verification script may still load; it does not show ad units on this version.</p>
 <h2>Hosting</h2><p>The site is hosted on GitHub Pages, which may log IP addresses for security.</p>
 <h2>Your rights</h2><p>You can ask us to access, correct, or delete personal information we hold. Use the <a href="/contact/">contact page</a>. Residents of some states and countries have additional rights, which we will honor.</p>
 <h2>Children</h2><p>The site is a general audience site and is not directed at children under 13. We do not knowingly collect personal information from children.</p>
@@ -668,12 +749,15 @@ def about_legal():
 <h2>Reporting infringement</h2><p>If you believe material on this site infringes your copyright, use the <a href="/contact/">contact form</a> and include your name and contact details, a description of the work, the URL on our site, a statement that you have a good faith belief the use is not authorized, a statement under penalty of perjury that the notice is accurate and that you are the owner or authorized to act, and your physical or electronic signature. We will review notices and remove or disable material when that is the right step.</p>
 <h2>Counter notice</h2><p>If your material was removed and you believe that was a mistake, you may send a counter notice through the contact form with the details required by 17 U.S.C. section 512(g).</p>
 <h2>Repeat infringement</h2><p>We will act against repeat infringement when that is appropriate.</p>'''),
-        "/ad-disclosure/": ("Advertising and Affiliate Disclosure", f'''<p>Last updated {D}. {LEGAL_LINE} Which Error Code is free to use. The site shows no ads and it has no affiliate links. Later we may show advertising or add a link to a seller for an official part number. If we do, the link will be labeled and this page will change.</p>
+        "/ad-disclosure/": ("Advertising and Affiliate Disclosure", f'''<p>Last updated {TODAY3_H}. {LEGAL_LINE} Which Error Code is free to use. The site has no affiliate links.</p>
+<h2>Google AdSense</h2><p>Launch pages include the Google AdSense publisher script and account meta tag ({ADSENSE_CLIENT}) so the site can be reviewed for AdSense. This version does not place ad units in the article body. When units are added, ads will be labeled as advertising, and this page will say so. See <a href="/ads.txt">ads.txt</a> and the <a href="/privacy/#advertising">privacy policy advertising section</a>.</p>
 <h2>Editorial independence</h2><p>No appliance maker pays for a code to be added or removed. Questions: <a href="/contact/">contact</a>.</p>'''),
     }
     for p, (t, inner) in legal.items():
         body = f'<article class="prose"><h1>{E(t)}</h1>{inner}<p class="legal-line">{LEGAL_LINE}</p></article>'
-        write(p, page(p, f"{t} | {BRAND}", clip(f"{t} for Which Error Code, an independent guide to appliance error codes and water filters."), body, article_ld(t, p), [("/", "Home"), (p, t)]))
+        lm = TODAY3 if p in ("/privacy/", "/ad-disclosure/") else None
+        write(p, page(p, f"{t} | {BRAND}", clip(f"{t} for Which Error Code, an independent guide to appliance error codes and water filters."), body,
+                      article_ld(t, p, published=TODAY, modified=lm or TODAY), [("/", "Home"), (p, t)], lastmod=lm))
 
 def not_found():
     body = '<h1>Page not found</h1><p>That page is not on this site. Try the <a href="/codes/">error code list</a> or the <a href="/filters/">water filter finder</a>.</p>'
@@ -722,6 +806,9 @@ def extras():
         f.write("whicherrorcode.com\n")
     with open(os.path.join(ROOT, f"{INDEXNOW_KEY}.txt"), "w", encoding="utf-8") as f:
         f.write(INDEXNOW_KEY)
+    # AdSense ads.txt (publisher verification). Not a sitemap URL.
+    with open(os.path.join(ROOT, "ads.txt"), "w", encoding="utf-8") as f:
+        f.write(f"google.com, pub-{ADSENSE_CLIENT.split('ca-pub-')[-1]}, DIRECT, f08c47fec0942fa0\n")
     bots = ["*", "Googlebot", "Bingbot", "Mediapartners-Google", "OAI-SearchBot", "ChatGPT-User", "GPTBot",
             "PerplexityBot", "Perplexity-User", "ClaudeBot", "Claude-SearchBot", "Claude-User",
             "Google-Extended", "Applebot", "Applebot-Extended", "DuckAssistBot", "Amazonbot", "CCBot", "Bytespider"]
