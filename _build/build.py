@@ -30,6 +30,12 @@ TODAY2_H = "18 Nov 2026"
 # Only pages whose content changed that day use it; unrelated rebuilds must not manufacture freshness.
 TODAY3 = "2026-11-19"
 TODAY3_H = "19 Nov 2026"
+# TODAY4 is the 20 Nov 2026 Whirlpool dishwasher pass. Only pages that changed that day use it.
+TODAY4 = "2026-11-20"
+TODAY4_H = "20 Nov 2026"
+# Bank file dishwasher-control-panel.png is not in this repo yet (images-needed #21).
+# Set this only after assets/photos/dishwasher-control-panel.png is committed. Empty skips the img tag.
+DW_THUMB = ""
 INDEXNOW_KEY = "e5e7fc4f0a0e96a11d330aa8cf3cba1c"
 CF_BEACON_TOKEN = "eac63f2b5dbc4539a2d95249baab6472"
 FORM_ENDPOINT = "https://formsubmit.co/joshuaofisrael@gmail.com"
@@ -228,9 +234,12 @@ def next_reads(items, heading="Keep reading", hid="nr-h"):
                 f'<a class="nr-thumb" href="{E(href)}" tabindex="-1" aria-hidden="true">'
                 f'<img src="{E(img)}" alt="" width="320" height="180" loading="lazy"></a>'
             )
+        credit = ""
+        if img:
+            credit = '<p class="nr-credit"><a href="/image-policy/">AI-generated image</a></p>'
         cards.append(
             f'<li>{thumb}<div><a href="{E(href)}"><strong>{E(title)}</strong></a>'
-            f"<p>{E(blurb)}</p></div></li>"
+            f"<p>{E(blurb)}</p>{credit}</div></li>"
         )
     return (
         f'<section class="next-reads" aria-labelledby="{E(hid)}"><h2 id="{E(hid)}">{E(heading)}</h2>'
@@ -281,7 +290,175 @@ def safety_for(r):
         extra = "<p>Samsung's refrigerator code page says not to unplug the refrigerator, and not to press buttons to hide a code, unless the steps for that code tell you to. Unplugging can make the fault harder to diagnose. The unplug step in the box above is for checks that require you to move the cabinet or open a panel.</p>"
     return SAFETY + extra
 
+DW_PAGES = {
+    "f8e4": (
+        "Whirlpool F8E4: Water in the Drip Tray",
+        "Whirlpool dishwasher F8E4 means water in the drip tray. Empty the tray, check the float, and leave power on after a professional install.",
+        """<p>F8E4 is water in the drip tray, not a failure to fill. <a href="/codes/whirlpool/dishwasher/h2o/">H2O</a> means the dishwasher is not detecting water. <a href="/codes/whirlpool/dishwasher/f8e2/">F8E2</a> is a leak check at the inlet connection. Start here when the display says F8E4.</p>
+<p>Whirlpool splits the steps by how the dishwasher was installed. If you can see water, or the unit was just installed, seat the fittings, reconnect the float, empty the tray, and press Cancel twice. If a professional installed it, Whirlpool says the opposite of a power cut: leave the power on, keep the door closed, turn the water off, and press Cancel once. The unplug line in the safety box does not apply to that second case.</p>"""),
+    "f9e1": (
+        "Whirlpool F9E1: Dishwasher Will Not Drain",
+        "Whirlpool dishwasher F9E1 is a long drain. Clean the filter, clear the hose, and remove a new disposer's knockout plug.",
+        """<p>F9E1 is the long drain. <a href="/codes/whirlpool/dishwasher/f9e2/">F9E2</a> is the page Whirlpool titles as a drain motor error, and that page does not tell you to wash the filter. Use this page when the display says F9E1 or the tub is still full.</p>
+<p>The knockout plug matters on a new install that drains into a garbage disposer. A disposer that has already been draining is not waiting on a plug. If the sink has an air gap, clear it with that air gap maker's own instructions. Whirlpool does not print those steps.</p>"""),
+    "f9e2": (
+        "Whirlpool F9E2: Drain Motor Error",
+        "Whirlpool dishwasher F9E2 is a drain motor error. Check the knockout plug and the hose, then call service. Do not replace the motor.",
+        """<p>Whirlpool's label is drain motor. The owner steps are still the hose and the disposer. There is no winding check and no instruction to replace the motor. If the code on the display is F9E1, use the <a href="/codes/whirlpool/dishwasher/f9e1/">F9E1 page</a>, which is the one that tells you to wash the filter. F9E2 starts with the knockout plug and the hose route.</p>"""),
+    "h2o": (
+        "Whirlpool H2O: Dishwasher Not Detecting Water",
+        "Whirlpool dishwasher H2O, also shown as H20 or F8E1, means water is not detected. Turn the supply on and unkink the hose.",
+        """<p>Three labels, one check. The dedicated page says H2O. The reading chart says H20. The flashing Clean light page says F8E1 or H20. Turn the water on, take the kink out of the supply hose, and press Start. Whirlpool does not say to unplug the dishwasher for this code.</p>
+<p>Water in the wrong place is a different code. <a href="/codes/whirlpool/dishwasher/f8e4/">F8E4</a> is the drip tray. <a href="/codes/whirlpool/dishwasher/f8e2/">F8E2</a> is a leak at the inlet valve connection. Do not empty the drip tray for H2O unless you also see water down there.</p>"""),
+    "f8e2": (
+        "Whirlpool F8E2: Fill Valve Connection Leak",
+        "Whirlpool dishwasher F8E2 is a fill valve electric error. Look for a leak at the inlet connection, then power cycle. Do not open the valve.",
+        """<p>Whirlpool calls F8E2 a fill valve electric error, then gives one look before the power cut: take the drip tray off and inspect the inlet valve connection for leaks. That leak look is what separates this code from <a href="/codes/whirlpool/dishwasher/f1e1/">F1E1</a>, which is only a power cut. Do not open the valve.</p>
+<p>If the tray has standing water and the code is F8E4, use the <a href="/codes/whirlpool/dishwasher/f8e4/">F8E4 page</a>. If the dishwasher is not detecting water at all, use <a href="/codes/whirlpool/dishwasher/h2o/">H2O</a>.</p>"""),
+    "f1e1": (
+        "Whirlpool F1E1: Control Module Reset",
+        "Whirlpool dishwasher F1E1 points at the control module. The only published check is a 30 second power cut. Service if it returns.",
+        """<p>Whirlpool's F1E1 page names the control module and stops. There is no filter to wash and no hose to straighten. A 30 second power cut is the published check. If the code comes back, schedule service and leave the control closed.</p>
+<p>Count a flashing Clean light before you decide this is the code. The first burst is F and the second burst is E, with about 1 to 2 seconds between them and about 5 seconds before the pattern repeats. One flash and one flash is F1E1. Whirlpool's reading guide uses seven flashes then one flash only as a counting example. It never says what F7E1 means, so that code is not on this site. Seven flashes then two flashes is <a href="/codes/whirlpool/dishwasher/#f7e2">F7E2</a>, the wash motor code on the hub.</p>
+<p>If the display is a code with an owner check, open that page instead: <a href="/codes/whirlpool/dishwasher/f9e1/">F9E1</a> for a long drain, <a href="/codes/whirlpool/dishwasher/f9e2/">F9E2</a> for the drain motor code, <a href="/codes/whirlpool/dishwasher/h2o/">H2O</a> when water is not detected, <a href="/codes/whirlpool/dishwasher/f8e4/">F8E4</a> for the drip tray, and <a href="/codes/whirlpool/dishwasher/f8e2/">F8E2</a> for the inlet connection.</p>"""),
+}
+
+DW_BLURBS = {
+    "f8e4": "Water in the drip tray. A professional install uses different steps that leave the power on.",
+    "f9e1": "Long drain. Wash the filter, clear the hose, and check a new disposer's knockout plug.",
+    "f9e2": "Drain motor code. Hose route and disposer first. Whirlpool does not say to replace the motor.",
+    "h2o": "Not detecting water. Same check as H20 and F8E1: supply on, hose straight, press Start.",
+    "f8e2": "Fill valve electric error. Inspect the inlet connection for a leak, then power cycle.",
+    "f1e1": "Control module. A 30 second power cut is the only check Whirlpool publishes.",
+}
+
+def _dw_cards(pairs, heading, hid):
+    img = DW_THUMB or None
+    return next_reads([(href, title, blurb, img) for href, title, blurb in pairs], heading, hid)
+
+def _dw_related(skip_slug, mid=True):
+    order = ["f8e4", "f9e1", "f9e2", "h2o", "f8e2", "f1e1"]
+    items = []
+    for slug in order:
+        if slug == skip_slug:
+            continue
+        title, _desc, _html = DW_PAGES[slug]
+        items.append((f"/codes/whirlpool/dishwasher/{slug}/", title, DW_BLURBS[slug]))
+    if mid:
+        return items[:3]
+    rest = items[3:]
+    rest.append(("/codes/whirlpool/washer/", "Whirlpool washer codes", "F9 E1 and F21 are washer drain codes. They are not the dishwasher F9E1 steps."))
+    rest.append(("/guides/safety/", "Safety notes", "Unplug before you pull the dishwasher out. Shut the water off if it is reaching the floor."))
+    return rest[:4]
+
+def _dw_compare():
+    return compare_box(
+        "Check another code",
+        [
+            ("/codes/samsung/dishwasher/", "Samsung dishwasher codes"),
+            ("/codes/lg/dishwasher/", "LG dishwasher codes"),
+            ("/codes/ge/dishwasher/", "GE Appliances dishwasher codes"),
+            ("/codes/kitchenaid/dishwasher/", "KitchenAid dishwasher codes"),
+            ("/codes/bosch/dishwasher/", "Bosch dishwasher codes"),
+            ("/codes/whirlpool/washer/", "Whirlpool washer codes"),
+            ("/appliances/ovens/", "Oven and range codes"),
+            ("/codes/ge/oven/", "GE Appliances oven codes"),
+            ("/codes/samsung/oven/", "Samsung oven codes"),
+            ("/codes/whirlpool/oven/", "Whirlpool oven F1 E1"),
+            ("/brands/lg/", "LG brand hub"),
+        ],
+        "A Whirlpool dishwasher code does not apply to another brand, or to a Whirlpool washer or oven.",
+    )
+
+def whirlpool_dw_code(r):
+    path = code_path(r)
+    title, desc, angle = DW_PAGES[r["slug"]]
+    published = TODAY if r["slug"] == "f1e1" else TODAY4
+    aliases = ""
+    if r["aliases"]:
+        aliases = "<p>Whirlpool also writes this as " + E(", ".join(r["aliases"])) + ".</p>"
+    extra = f"<p>{E(r['extra'])}</p>" if r["extra"] else ""
+    checks = "".join(f"<li>{E(c)}</li>" for c in r["checks"])
+    thumb = article_thumb(DW_THUMB, "Close view of an unbranded dishwasher control panel in daylight", "AI-generated image")
+    faqs = [
+        (f"What does Whirlpool dishwasher {r['code']} mean?", r["meaning"] + (" " + r["extra"] if r["extra"] else "")),
+        (f"What does Whirlpool say to check for {r['code']}?", " ".join(r["checks"]) + " If water is reaching the floor, shut the supply off. Do not open the control."),
+        (f"When should I call a technician for {r['code']}?", r["service"]),
+    ]
+    body = f'''<article class="prose wide"><h1>{E(title)}</h1>
+{byline(TODAY4_H)}
+{thumb}
+<div class="answer"><p><strong>Meaning:</strong> {E(r["meaning"])}</p></div>
+{aliases}{extra}
+{safety_for(r)}
+{angle}
+<h2>Checks Whirlpool publishes</h2><ul class="checks">{checks}</ul>
+{_dw_cards(_dw_related(r["slug"], True), "Related Whirlpool dishwasher codes", "nr-mid")}
+<h2>When to call a technician</h2><p>{E(r["service"])}</p>
+{faq_html(faqs)}
+{sources_html(r["sources"], f"Retrieved {TODAY4_H}. Models differ. If your manual defines {E(r['code'])} differently, the manual wins. {BRAND} is not affiliated with Whirlpool.")}
+{_dw_compare()}
+{_dw_cards(_dw_related(r["slug"], False), "Keep reading", "nr-end")}
+<p><a href="/codes/whirlpool/dishwasher/">All Whirlpool dishwasher codes</a> · <a href="/brands/whirlpool/">Whirlpool</a> · <a href="/appliances/dishwashers/">Dishwasher brands</a> · <a href="/guides/safety/">Safety notes</a> · <a href="/codes/">All error codes</a></p>
+</article>'''
+    write(path, page(path, title, desc, body,
+                    [article_ld(title, path, f"Whirlpool {r['code']}", published=published, modified=TODAY4), faq_ld(faqs)],
+                    [("/", "Home"), ("/codes/", "Error codes"), ("/codes/whirlpool/dishwasher/", "Whirlpool Dishwasher"), (path, r["code"])],
+                    lastmod=TODAY4))
+
+def whirlpool_dw_listing(rows):
+    path = "/codes/whirlpool/dishwasher/"
+    own = [r for r in rows if r["individual"]]
+    shared = [r for r in rows if not r["individual"]]
+    own_bits = []
+    for r in own:
+        own_bits.append(
+            f'<h3 id="{r["slug"]}">{E(r["code"])}</h3><p>{E(r["meaning"])} '
+            f'<a href="{code_path(r)}">Full page for {E(r["code"])}</a>.</p>')
+    shared_bits = []
+    for r in shared:
+        alias = f" Also written as {', '.join(r['aliases'])}." if r["aliases"] else ""
+        shared_bits.append(f'<li id="{r["slug"]}"><strong>{E(r["code"])}</strong>: {E(r["meaning"])}{E(alias)} {E(r["service"])}</li>')
+    faqs = [
+        ("How do I read a flashing Clean light on a Whirlpool dishwasher?",
+         "Whirlpool says to count the first set of flashes as the F number, pause about 1 to 2 seconds, then count the second set as the E number. A longer pause of about 5 seconds comes before the pattern repeats. Seven flashes, a pause, and one flash is the example they give for an F7E1 reading. They do not define what F7E1 means."),
+        ("Why is there no F7E1 page?",
+         "Whirlpool's reading guide uses F7E1 only as a counting example. The code it actually defines in that family is F7E2, a wash motor error. We do not publish a page for a code the maker does not explain."),
+        ("Which Whirlpool dishwasher code means it will not drain?",
+         "F9E1 is the long drain, with a filter wash and a hose check. F9E2 is the drain motor code, and its owner steps start with the disposer knockout plug and the hose route. Whirlpool does not tell you to replace the motor."),
+    ]
+    thumb = article_thumb(DW_THUMB, "Close view of an unbranded dishwasher control panel in daylight", "AI-generated image")
+    title = "Whirlpool Dishwasher Codes and What They Mean"
+    desc = "Whirlpool dishwasher codes from Whirlpool's pages. F8E4 is the drip tray, F9E1 will not drain, and H2O is not detecting water."
+    body = f'''<article class="prose wide"><h1>Whirlpool dishwasher error codes</h1>
+{byline(TODAY4_H)}
+{thumb}
+<div class="answer"><p>These are the Whirlpool dishwasher codes we could read on Whirlpool's own pages on {TODAY4_H}. A code is here only when that page states a cause. F8E4 is water in the drip tray, F9E1 is a long drain, and H2O means the dishwasher is not detecting water.</p></div>
+{SAFETY}
+<h2>How to read the display</h2>
+<p>On a digital model, Whirlpool says the code appears as an F number and an E number. If the screen is idle, press a button to wake it. On a model with no digits, a flashing Clean light is the code. Count the first burst of flashes. That is F. After a short pause of about 1 to 2 seconds, count the second burst. That is E. A longer pause of about 5 seconds comes before the whole pattern repeats.</p>
+<p>Whirlpool's example is seven flashes, a pause, then one flash, which they call an F7E1 reading. The same reading page does not say what F7E1 means. The wash motor code it does define is <a href="#f7e2">F7E2</a>. Write the flashes down and use the manual for your model before you treat an undefined pattern as a known code. We do not add F7E1.</p>
+<h2>Codes with their own checks</h2>
+{"".join(own_bits)}
+{_dw_cards(_dw_related("", True), "Open a code with its own checks", "nr-mid")}
+<h2>Codes whose owner page is only a power cut</h2>
+<p>Whirlpool publishes the same 30 second power cut for the codes in this list, and a different cause line for each one. Unplug a corded dishwasher, or switch off its breaker, wait 30 seconds, and restore power. If the code returns, schedule service. Do not open the control, the wash motor, or the diverter. These codes do not get separate pages, because a second page would repeat that power cut with the name swapped.</p>
+<ul>{"".join(shared_bits)}</ul>
+<p>F1E2 and F2E2 use the same cause line, a main control communication error. Whirlpool does not say which models use which code. <a href="/codes/whirlpool/dishwasher/f1e1/">F1E1</a> is the control module code. It has a page of its own because a flashing Clean light is easy to miscount, and because Whirlpool's page for it stops at the power cut. The check is still only that power cut.</p>
+{_dw_compare()}
+{faq_html(faqs)}
+{sources_html(unique_sources(rows), f"Retrieved {TODAY4_H}. {BRAND} is not affiliated with Whirlpool. Names identify the appliance only.")}
+{_dw_cards(_dw_related("", False), "Keep reading", "nr-end")}
+<p><a href="/brands/whirlpool/">All Whirlpool pages</a> · <a href="/appliances/dishwashers/">All dishwasher brands</a> · <a href="/codes/whirlpool/washer/">Whirlpool washer codes</a> · <a href="/guides/safety/">Safety notes</a></p>
+</article>'''
+    write(path, page(path, title, desc, body,
+                    [article_ld("Whirlpool dishwasher error codes", path, "Whirlpool Dishwasher", published=TODAY, modified=TODAY4), faq_ld(faqs)],
+                    [("/", "Home"), ("/codes/", "Error codes"), (path, "Whirlpool Dishwasher")], lastmod=TODAY4))
+
 def code_page(r, new=False):
+    if r["brand"] == "whirlpool" and r["appl"] == "dishwasher":
+        whirlpool_dw_code(r)
+        return
     d, dh = (TODAY2, TODAY2_H) if new else (TODAY, TODAY_H)
     path = code_path(r)
     b, a = BNAME[r["brand"]], ANAME[r["appl"]]
@@ -322,6 +499,9 @@ def code_page(r, new=False):
                     [("/", "Home"), ("/codes/", "Error codes"), (listing_path(r["brand"], r["appl"]), f"{b} {a}"), (path, r["code"])], lastmod=d))
 
 def listing_page(brand, appl, rows, new=False):
+    if brand == "whirlpool" and appl == "dishwasher":
+        whirlpool_dw_listing(rows)
+        return
     d, dh = (TODAY2, TODAY2_H) if new else (TODAY, TODAY_H)
     path = listing_path(brand, appl)
     b, a = BNAME[brand], ANAME[appl]
@@ -384,8 +564,13 @@ def brand_pages():
             (f"Why is a {name} code missing?",
              "A code is missing when it was not on the manufacturer page we checked. We do not add codes from repair blogs or from another brand."),
         ]
-        # ge gained an oven listing on 18 Nov 2026; every other brand page is unchanged from 16 Nov.
-        dh, lm = (TODAY2_H, TODAY2) if slug == "ge" else (None, None)
+        # ge gained an oven listing on 18 Nov 2026. Whirlpool dishwasher codes changed on 20 Nov 2026.
+        if slug == "ge":
+            dh, lm = (TODAY2_H, TODAY2)
+        elif slug == "whirlpool":
+            dh, lm = (TODAY4_H, TODAY4)
+        else:
+            dh, lm = (None, None)
         body = f'''<article class="prose"><h1>{E(name)} error codes</h1>
 {byline(dh)}
 <p class="answer">Pick the appliance. Every code is cited to a {E(name)} manual or support page. We leave out codes we have not checked on that page.</p>
@@ -487,17 +672,17 @@ def codes_index(search_json):
     ]
     # A Loc Door link was added here 18 Nov 2026, so this hub's retrieved/modified date moves.
     body = f'''<article class="prose wide"><h1>Appliance error code pages</h1>
-{byline(TODAY2_H)}
-<p class="answer">One page for each brand and appliance we have checked, plus a page for the codes people look up most often. Search from the <a href="/">home page</a>.</p>
+{byline(TODAY4_H)}
+<p class="answer">One page for each brand and appliance we have checked, plus a page for the codes people look up most often. Search from the <a href="/">home page</a>. Whirlpool dishwasher codes were added {TODAY4_H}.</p>
 <h2>By brand</h2><ul class="cols">{"".join(f'<li><a href="/brands/{s}/">{E(n)}</a></li>' for s, n in BRANDS)}</ul>
 <h2>By appliance</h2><ul class="cols">{"".join(f'<li><a href="/appliances/{p}/">{E(p.capitalize())}</a></li>' for _, _, p in APPLS)}</ul>
 <h2>Single codes</h2><ul class="cols">{"".join(rows)}</ul>
-<p class="note">Each code page links the manufacturer page it was read from. Retrieved {TODAY2_H}.</p>
+<p class="note">Each code page links the manufacturer page it was read from. Whirlpool dishwasher pages retrieved {TODAY4_H}. Earlier codes keep the date on their own page.</p>
 <section class="sources"><h2>Sources</h2><ul><li><a href="https://www.samsung.com/us/support/troubleshoot/TSG10000997/" rel="nofollow noopener" target="_blank">Samsung washer error codes</a></li><li><a href="https://www.lg.com/us/support/help-library/lg-front-load-washer-error-code-list--20155069413456" rel="nofollow noopener" target="_blank">LG washer error codes</a></li><li><a href="https://products.geappliances.com/appliance/gea-support-search-content?contentId=16912" rel="nofollow noopener" target="_blank">GE Appliances refrigerator fault codes</a></li></ul><p class="note">The full citation list is on each code page.</p></section>
 {faq_html(faqs)}</article>'''
     write("/codes/", page("/codes/", f"Appliance Error Code List | {BRAND}", "Browse verified washer, dryer, dishwasher, refrigerator, and oven error codes by brand.",
-                         body, [article_ld("Appliance error code pages", "/codes/", modified=TODAY2), faq_ld(faqs)],
-                         [("/", "Home"), ("/codes/", "Error codes")], lastmod=TODAY2))
+                         body, [article_ld("Appliance error code pages", "/codes/", published=TODAY, modified=TODAY4), faq_ld(faqs)],
+                         [("/", "Home"), ("/codes/", "Error codes")], lastmod=TODAY4))
 
 def home(search_json):
     faqs = [
@@ -515,10 +700,11 @@ def home(search_json):
     body = f'''<section class="hero"><h1>Which error code is on your appliance?</h1>
 <p class="answer">Look up a washer, dryer, dishwasher, refrigerator, or oven code. Every code on this site comes from the manufacturer's support page or manual, with the safe checks that page allows and a clear point to stop and call a technician.</p>
 <form class="search" role="search" action="/" method="get"><label for="code-search">Search a code</label>
-<input id="code-search" name="code" type="search" inputmode="text" autocomplete="off" placeholder="Try 4C, OE, F9 E1, E15" enterkeyhint="search">
+<input id="code-search" name="code" type="search" inputmode="text" autocomplete="off" placeholder="Try 4C, OE, F8E4, H2O" enterkeyhint="search">
 <ul id="code-results"></ul></form>
 <script type="application/json" id="code-index">{search_json}</script>
-<p class="btnrow"><a class="btn" href="/codes/">Browse all codes</a> <a class="btn alt" href="/filters/">Find a fridge water filter</a></p></section>
+<p class="btnrow"><a class="btn" href="/codes/">Browse all codes</a> <a class="btn alt" href="/filters/">Find a fridge water filter</a></p>
+<p>Added {TODAY4_H} from Whirlpool's own dishwasher pages: <a href="/codes/whirlpool/dishwasher/">the Whirlpool dishwasher hub</a>, including <a href="/codes/whirlpool/dishwasher/f8e4/">F8E4</a> (water in the drip tray), <a href="/codes/whirlpool/dishwasher/f9e1/">F9E1</a> (will not drain), and <a href="/codes/whirlpool/dishwasher/h2o/">H2O</a> (not detecting water).</p></section>
 {SAFETY}
 <h2>Brands</h2><ul class="cards">{"".join(brand_cards)}</ul>
 <h2>Appliance types</h2><ul class="cols">{"".join(f'<li><a href="/appliances/{p}/">{E(p.capitalize())}</a></li>' for _, _, p in APPLS)}</ul>
@@ -526,8 +712,8 @@ def home(search_json):
 <h2>How a page is built</h2><p>We open the manufacturer page, record the code and the checks written there, and link that page. If a code is not on the page, it is not here. Names are plain text. There are no logos and no claim that a brand sponsors this site. <a href="/methodology/">Sources and methods</a>.</p>
 {faq_html(faqs)}'''
     desc = "Look up washer, dryer, dishwasher, refrigerator, and oven error codes, plus the official fridge water filter number. Cited to the manufacturer."
-    # The GE brand card gained an Oven link on 18 Nov 2026 once GE oven codes were added.
-    write("/", page("/", f"{BRAND}: Appliance Error Codes and Water Filters", desc, body, faq_ld(faqs), lastmod=TODAY2))
+    # Whirlpool dishwasher codes were added 20 Nov 2026, so the search index and the intro line changed.
+    write("/", page("/", f"{BRAND}: Appliance Error Codes and Water Filters", desc, body, faq_ld(faqs), lastmod=TODAY4))
 
 def filter_pages():
     by = {f["slug"]: f for f in FILTERS}
@@ -840,7 +1026,7 @@ def extras():
             f.write(f"<url><loc>{url(p)}</loc><lastmod>{m}</lastmod></url>\n")
         f.write("</urlset>\n")
     lines = [f"# {BRAND}", "",
-             f"> Which Error Code (whicherrorcode.com) explains home appliance error codes and official refrigerator water filter numbers. Every code is cited to the manufacturer. Last verified {TODAY2_H}.",
+             f"> Which Error Code (whicherrorcode.com) explains home appliance error codes and official refrigerator water filter numbers. Every code is cited to the manufacturer. Each page has its own last verified date. Whirlpool dishwasher codes were checked {TODAY4_H}.",
              "",
              "Independent. Not affiliated with any appliance maker. Unplug the appliance and shut off the gas before any inspection past the published checks.",
              "",
