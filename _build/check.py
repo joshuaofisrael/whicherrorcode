@@ -9,6 +9,24 @@ is a false positive.
 and fails with ga4-id-empty while GA4_ID in _build/build.py is blank.
 """
 import glob, re, json, os, sys, html
+
+# Paths in _build/thin-noindex.txt are intentionally noindex (AdSense low-value-content fix, 20 Nov 2026).
+import os as _os
+_THIN = set()
+try:
+    with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "thin-noindex.txt"), encoding="utf-8") as _fh:
+        _THIN = {l.strip().strip("/") for l in _fh if l.strip() and not l.startswith("#")}
+except FileNotFoundError:
+    pass
+
+
+def _thin_rel(rel):
+    r = str(rel).replace("\\", "/")
+    if r.endswith("index.html"):
+        r = r[: -len("index.html")]
+    return r.strip("/") in _THIN
+
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LAUNCH = "--launch" in sys.argv
 LEGAL = {"terms", "privacy", "disclaimer", "copyright", "ad-disclosure"}
@@ -87,7 +105,7 @@ for f in files:
         for token in ('id="cookie-banner"', 'id="cookie-accept"', 'id="cookie-reject"', 'id="cookie-settings"'):
             if token not in h:
                 fail(f"consent-ui {rel} {token}")
-        if rel != "404.html" and "noindex" in rc.lower():
+        if rel != "404.html" and "noindex" in rc.lower() and not _thin_rel(rel):
             fail(f"noindex {rel}")
         if rel == "404.html" and "noindex" not in rc.lower():
             fail(f"404-indexable {rel}")

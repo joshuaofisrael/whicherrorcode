@@ -77,7 +77,24 @@ def link(pair):
 def crumbs_for(items):
     return items
 
+# AdSense low-value-content fix (20 Nov 2026): paths listed in _build/thin-noindex.txt
+# get noindex,follow and stay out of the sitemap until they have real unique substance.
+_THIN_NOINDEX = set()
+try:
+    import os as _os
+    with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "thin-noindex.txt"), encoding="utf-8") as _fh:
+        _THIN_NOINDEX = {l.strip().strip("/") for l in _fh if l.strip() and not l.startswith("#")}
+except FileNotFoundError:
+    pass
+
+
+def _is_thin(path):
+    return str(path).strip("/") in _THIN_NOINDEX
+
+
 def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, robots_extra=False, lastmod=None):
+    if _is_thin(path):
+        noindex = True
     desc = clip(desc)
     canon = url(path if path != "/404.html" else "/")
     if path == "/404.html":
@@ -733,6 +750,7 @@ def about_legal():
 <p>Google Analytics 4 (GA4) stays off until you accept the banner. Consent Mode v2 starts with analytics storage, ad storage, ad user data, and ad personalization denied. The GA4 script is requested only after you accept. Reject leaves that script unloaded. Cookie settings in the footer opens the same choice. Accept allows analytics storage on this site only. Ad storage, ad user data, and ad personalization stay denied until we show ad units that need them. The preview build does not include the Cloudflare beacon or the GA4 script. The site owner pastes the measurement id into the launch build before those hits are sent.</p>
 <h2>Contact</h2><p>If you email {CONTACT_EMAIL} or use the contact form, we receive your name, email address, and message so we can reply. The form is handled by FormSubmit. We keep messages only as long as we need them to respond.</p>
 <h2 id="advertising">Advertising</h2><p>Which Error Code uses Google AdSense for future display advertising. Launch pages include the AdSense account meta tag and the AdSense script for publisher verification (publisher id {ADSENSE_CLIENT}). This version does not place ad units on the page, so you should not see ads in the article body yet.</p>
+<h2>Google advertising cookies and your choices</h2><p>Third-party vendors, including Google, use cookies to serve ads based on a user's prior visits to this website or other websites. Google's use of advertising cookies enables it and its partners to serve ads based on your visit to this site and/or other sites on the Internet. You may opt out of personalized advertising by visiting <a href="https://adssettings.google.com/" rel="nofollow noopener">Google Ads Settings</a>. Alternatively, you can opt out of a third-party vendor's use of cookies for personalized advertising at <a href="https://www.aboutads.info/choices/" rel="nofollow noopener">aboutads.info/choices</a>. For more information, see <a href="https://policies.google.com/technologies/partner-sites" rel="nofollow noopener">how Google uses information from sites or apps that use its services</a>.</p>
 <p>When ad units go live, Consent Mode will keep ad storage denied until you accept advertising cookies where the law requires that choice. You can opt out of personalized advertising at Google Ads Settings and aboutads.info. See the <a href="/ad-disclosure/">advertising disclosure</a> and the site <a href="/ads.txt">ads.txt</a> file.</p>
 <h2>Cookies</h2><p>These pages do not set their own cookies. Cloudflare Web Analytics does not use cookies. Your banner choice is stored in this browser's local storage, not in a cookie. If you accept Google Analytics 4, Google may set analytics cookies for this site. Choose Reject, or open Cookie settings and reject later, and the GA4 script is not requested. The AdSense verification script may still load; it does not show ad units on this version.</p>
 <h2>Hosting</h2><p>The site is hosted on GitHub Pages, which may log IP addresses for security.</p>
