@@ -30,7 +30,7 @@ TODAY2_H = "18 Nov 2026"
 # Only pages whose content changed that day use it; unrelated rebuilds must not manufacture freshness.
 TODAY3 = "2026-11-19"
 TODAY3_H = "19 Nov 2026"
-# TODAY4 is the 20 Nov 2026 Whirlpool dishwasher pass. Only pages that changed that day use it.
+# TODAY4 is 20 Nov 2026: the washer hub refresh (on main) and the Whirlpool dishwasher pages.
 TODAY4 = "2026-11-20"
 TODAY4_H = "20 Nov 2026"
 # Bank file dishwasher-control-panel.png is not in this repo yet (images-needed #21).
@@ -608,8 +608,94 @@ def brand_pages():
                           body, [article_ld("Error codes by brand", "/brands/", modified=TODAY2), faq_ld(faqs)],
                           [("/", "Home"), ("/brands/", "Brands")], lastmod=TODAY2))
 
+def washer_appliance_page():
+    """20 Nov 2026 refresh of /appliances/washers/. Other appliance hubs stay on their old dates."""
+    path = "/appliances/washers/"
+    an = "Washer"
+    items = []
+    for slug, name in BRANDS:
+        rows = [r for r in ROWS if r["brand"] == slug and r["appl"] == "washer"]
+        if not rows:
+            continue
+        preview = ", ".join(r["code"] for r in rows[:6])
+        items.append(f'<li class="card"><h2><a href="{listing_path(slug, "washer")}">{E(name)} washer codes</a></h2><p>{E(preview)}</p></li>')
+    faqs = [
+        ("Which brand should I pick for a washer code?",
+         "Use the brand name on the washer. Samsung 4C is a fill code, LG OE is a drain code, and Whirlpool F9 E1 is a long drain. The same letters on another brand are a different page."),
+        ("Are Whirlpool F9 E1 and F21 the same drain problem?",
+         "They are related, and Whirlpool publishes them on two pages. F9 E1 is a long drain, with the hose no more than 4.5 inches into the standpipe and a 96 inch maximum height on the front load page. F21, also shown as F02, is drain time longer than expected. That page adds HE detergent and a Pause/Cancel or 5 minute unplug. It does not repeat the 4.5 inch measurement."),
+        ("Which checks are safe on a washer?",
+         "Only the checks written on that brand's page. Unplug the washer or switch off the breaker before you move it or open a panel. Let hot drain water cool before you open a pump filter."),
+    ]
+    mid = next_reads([
+        ("/codes/whirlpool/washer/f9-e1/", "Whirlpool washer F9 E1", "Long drain: 4.5 inch hose limit, air gap, and the 96 inch height on Whirlpool's front load page.", None),
+        ("/codes/whirlpool/washer/f21/", "Whirlpool washer F21", "Drain time longer than expected. Pause/Cancel, then a 5 minute unplug, and HE detergent only.", None),
+        ("/codes/samsung/washer/4c/", "Samsung washer 4C", "Water is not entering. Hose match, open valves, and the 6 to 8 inch drain-hose depth Samsung states.", None),
+        ("/codes/lg/washer/oe/", "LG washer OE", "The washer cannot drain. LG's spin-only listening check comes before the pump filter.", None),
+    ], "Washer codes to open next", hid="nr-mid")
+    end = next_reads([
+        ("/codes/ge/washer/ie/", "GE washer IE", "No water entering, plus the 4 minute control lock that unplugging restarts.", None),
+        ("/codes/bosch/washer/e18/", "Bosch washer E18", "Blocked or kinked drain hose. Bosch warns the water can still be very hot.", None),
+        ("/codes/maytag/washer/lf/", "Maytag washer LF", "Slow fill. Maytag says both the hot and the cold faucets have to be open.", None),
+        ("/guides/safety/", "Safety notes", "Unplug before you move the washer or open a panel. Shut the gas off on a gas dryer or range.", None),
+    ], "Keep reading", hid="nr-end")
+    compare = compare_box(
+        "Check another appliance",
+        [
+            ("/appliances/ovens/", "Oven and range codes"),
+            ("/codes/ge/oven/", "GE Appliances oven codes"),
+            ("/codes/samsung/oven/", "Samsung oven codes"),
+            ("/codes/whirlpool/oven/", "Whirlpool oven F1 E1"),
+            ("/brands/lg/", "LG brand hub"),
+            ("/appliances/dishwashers/", "Dishwasher codes"),
+        ],
+        "A washer code does not transfer to an oven or a dishwasher. Open the machine you actually have.",
+    )
+    sources = [
+        ("Whirlpool Product Help: washer F9 E1", "https://producthelp.whirlpool.com/Laundry/Washers/Front_Load_Washers/Error_Codes/%22F%22_Error_Codes/F9_E1_-_Front_Load_Washer"),
+        ("Whirlpool Product Help: washer F21 and F02", "https://producthelp.whirlpool.com/Laundry/Washers/Product_Info/Washer_Product_Assistance/What_is_an_F21_or_F02_Error_Code_on_a_Front_Load_Washer"),
+        ("Samsung US support: washing machine error codes", "https://www.samsung.com/us/support/troubleshoot/TSG10000997/"),
+        ("LG US support: front load washer error code list", "https://www.lg.com/us/support/help-library/lg-front-load-washer-error-code-list--20155069413456"),
+        ("GE Appliances: washer Consumer Help Indicator", "https://products.geappliances.com/appliance/gea-support-search-content?contentId=35949"),
+        ("Maytag Product Help: top load HE washer error codes", "https://producthelp.maytag.com/Laundry/Washers/Product_Info/Washer_Product_Assistance/Error_Codes_in_Top_Load_HE_Washers"),
+        ("Bosch US support: washer error codes", "https://www.bosch-home.com/us/en/c/spotlight/blt341dacb48f00c362/owner-support/error-codes/washers"),
+    ]
+    body = f'''<article class="prose"><h1>Washer error codes</h1>
+{byline(TODAY4_H)}
+<p class="answer">Pick the brand printed on the washer. The letters are not a shared code. On the pages we have checked, <a href="/codes/samsung/washer/4c/">Samsung 4C</a> means water is not entering, <a href="/codes/lg/washer/oe/">LG OE</a> means the washer cannot drain, and <a href="/codes/whirlpool/washer/f9-e1/">Whirlpool F9 E1</a> means the drain is taking too long.</p>
+<h2>Rechecked 20 Nov 2026: Whirlpool drain codes</h2>
+<p>Whirlpool's front load <a href="https://producthelp.whirlpool.com/Laundry/Washers/Front_Load_Washers/Error_Codes/%22F%22_Error_Codes/F9_E1_-_Front_Load_Washer" rel="nofollow noopener" target="_blank">F9 E1 page</a> still calls that code a long drain. The hose must not extend more than 4.5 inches (113 mm) into the standpipe or laundry tub, because drained water can siphon back. The maximum height on that page is 96 inches from the bottom of the washer. Do not tape the hose into the pipe. There has to be an air gap. On models that have one, the drain pump filter is behind the bottom dispenser drawer, and the door seal has small drain holes that clog. Some top load displays show the same alert as drn. The full checks are on the <a href="/codes/whirlpool/washer/f9-e1/">F9 E1 page</a>.</p>
+<p>Whirlpool's <a href="https://producthelp.whirlpool.com/Laundry/Washers/Product_Info/Washer_Product_Assistance/What_is_an_F21_or_F02_Error_Code_on_a_Front_Load_Washer" rel="nofollow noopener" target="_blank">F21 and F02 page</a> is a second article in the same family: drain time longer than expected. Straighten a kinked or clogged hose, use only HE detergent, and press Pause/Cancel. If that does not clear it, unplug the washer for 5 minutes, plug it back in, reselect the cycle, and press Start. That page does not repeat the 4.5 inch measurement. If the code stays, Whirlpool says to call for service. Details are on the <a href="/codes/whirlpool/washer/f21/">F21 page</a>.</p>
+{mid}
+<h2>Fill, drain, and door codes are not interchangeable</h2>
+<p>This table is only the codes already on this site. It is not a full list of every code each maker publishes. A blank cell means we have not put that kind of code up for that brand, not that the maker has none.</p>
+<div class="tablewrap"><table class="list"><thead><tr><th>Brand</th><th>Fill or supply</th><th>Drain</th><th>Door or lid</th></tr></thead><tbody>
+<tr><td>Samsung</td><td><a href="/codes/samsung/washer/4c/">4C</a></td><td><a href="/codes/samsung/washer/5e/">5E</a></td><td><a href="/codes/samsung/washer/de/">dE</a></td></tr>
+<tr><td>LG</td><td><a href="/codes/lg/washer/ie/">IE</a></td><td><a href="/codes/lg/washer/oe/">OE</a></td><td><a href="/codes/lg/washer/de/">dE</a></td></tr>
+<tr><td>GE Appliances</td><td><a href="/codes/ge/washer/ie/">IE</a></td><td>Not on this hub</td><td><a href="/codes/ge/washer/de/">dE</a></td></tr>
+<tr><td>Whirlpool</td><td>Not on the two pages cited here</td><td><a href="/codes/whirlpool/washer/f9-e1/">F9 E1</a>, <a href="/codes/whirlpool/washer/f21/">F21</a></td><td>Not on those pages</td></tr>
+<tr><td>Maytag</td><td><a href="/codes/maytag/washer/lf/">LF</a></td><td><a href="/codes/maytag/washer/#drn">drn</a></td><td><a href="/codes/maytag/washer/lid/">lid</a></td></tr>
+<tr><td>Bosch</td><td><a href="/codes/bosch/washer/e17/">E17</a></td><td><a href="/codes/bosch/washer/e18/">E18</a></td><td><a href="/codes/bosch/washer/#e16">E16</a></td></tr>
+</tbody></table></div>
+<p><a href="/codes/lg/washer/oe/">LG OE</a> is the page that tells you to run a spin-only cycle and listen for the pump before you open the filter. <a href="/codes/ge/washer/ie/">GE IE</a> adds a timer the others do not: when the message starts, the washer locks the controls for 4 minutes, and unplugging starts that timer over. <a href="/codes/bosch/washer/e17/">Bosch E17</a> is a blocked inlet filter or low pressure, and Bosch says the AquaStop hose contains an electric valve, so do not immerse it. <a href="/codes/maytag/washer/lf/">Maytag LF</a> is a slow fill, and Maytag says both the hot and the cold faucets have to be open. <a href="/brands/lg/">LG's other appliances</a> use a different list again. An oven code, including the ones on the <a href="/appliances/ovens/">oven hub</a>, is not a washer code.</p>
+{compare}
+<h2>Brand pages</h2>
+<ul class="cards">{"".join(items)}</ul>
+<p>If the code on your display is not in that brand's list, it is missing because we have not read it on the maker's page. Do not borrow a meaning from the column above. Unplug the washer before you pull it out or open a panel. The <a href="/guides/safety/">safety notes</a> cover that, and they cover the gas shutoff for a dryer or a range.</p>
+{faq_html(faqs)}
+{sources_html(sources, f"Whirlpool F9 E1 and F21 pages reread {TODAY4_H}. Samsung, LG, GE Appliances, Maytag, and Bosch washer pages were last read {TODAY_H} and were not rewritten in this refresh. Which Error Code is not affiliated with these makers.")}
+{end}
+<p><a href="/appliances/">All appliance types</a> · <a href="/codes/">All error codes</a> · <a href="/codes/ge/oven/">GE oven codes</a> · <a href="/codes/samsung/oven/">Samsung oven codes</a> · <a href="/codes/whirlpool/oven/">Whirlpool oven F1 E1</a></p></article>'''
+    desc = "Washer error codes by brand. Samsung 4C fills, LG OE drains, Whirlpool F9 E1 is a long drain. Whirlpool pages rechecked 20 Nov 2026."
+    write(path, page(path, "Washer Error Codes by Brand", desc, body,
+                    [article_ld("Washer error codes", path, an, published=TODAY, modified=TODAY4), faq_ld(faqs)],
+                    [("/", "Home"), ("/appliances/", "Appliances"), (path, "Washers")], lastmod=TODAY4))
+
 def appliance_pages():
     for appl, an, plural in APPLS:
+        if appl == "washer":
+            washer_appliance_page()
+            continue
         items = []
         for slug, name in BRANDS:
             rows = [r for r in ROWS if r["brand"] == slug and r["appl"] == appl]
