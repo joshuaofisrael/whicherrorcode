@@ -1,6 +1,6 @@
 # Which Error Code
 
-> Which Error Code (whicherrorcode.com) explains home appliance error codes and official refrigerator water filter numbers. Every code is cited to the manufacturer. Last verified 18 Nov 2026.
+> Which Error Code (whicherrorcode.com) explains home appliance error codes and official refrigerator water filter numbers. Every code is cited to the manufacturer. Each page has its own last verified date. Whirlpool dishwasher codes were checked 20 Nov 2026.
 
 Independent. Not affiliated with any appliance maker. Unplug the appliance and shut off the gas before any inspection past the published checks.
 
@@ -113,6 +113,11 @@ Independent. Not affiliated with any appliance maker. Unplug the appliance and s
 - [Whirlpool washer F9 E1](https://whicherrorcode.com/codes/whirlpool/washer/f9-e1/)
 - [Whirlpool washer F21](https://whicherrorcode.com/codes/whirlpool/washer/f21/)
 - [Whirlpool dryer F1 E1](https://whicherrorcode.com/codes/whirlpool/dryer/f1-e1/)
+- [Whirlpool dishwasher F8E4](https://whicherrorcode.com/codes/whirlpool/dishwasher/f8e4/)
+- [Whirlpool dishwasher F9E1](https://whicherrorcode.com/codes/whirlpool/dishwasher/f9e1/)
+- [Whirlpool dishwasher F9E2](https://whicherrorcode.com/codes/whirlpool/dishwasher/f9e2/)
+- [Whirlpool dishwasher H2O](https://whicherrorcode.com/codes/whirlpool/dishwasher/h2o/)
+- [Whirlpool dishwasher F8E2](https://whicherrorcode.com/codes/whirlpool/dishwasher/f8e2/)
 - [Whirlpool dishwasher F1E1](https://whicherrorcode.com/codes/whirlpool/dishwasher/f1e1/)
 - [Whirlpool refrigerator F1 E1](https://whicherrorcode.com/codes/whirlpool/refrigerator/f1-e1/)
 - [Whirlpool oven F1 E1](https://whicherrorcode.com/codes/whirlpool/oven/f1-e1/)

@@ -58,7 +58,10 @@ def photo_unlinked(h):
         pre = h[:m.start()]
         start = max(pre.rfind("<a "), pre.rfind("<a\n"))
         close = pre.rfind("</a>")
-        if start < 0 or close > start or 'href="/image-policy/"' not in pre[start:]:
+        parent_ok = start >= 0 and close < start and 'href="/image-policy/"' in pre[start:]
+        # Next-read thumbs link to the article. The same card credits the image policy.
+        card_ok = 'class="nr-thumb"' in pre[max(0, m.start() - 220):m.start()] and 'href="/image-policy/"' in h[m.start():m.start() + 700]
+        if not parent_ok and not card_ok:
             hits.append(m.start())
     return hits
 
