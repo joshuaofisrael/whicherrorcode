@@ -33,6 +33,15 @@ TODAY3_H = "19 Nov 2026"
 # TODAY4 is the 20 Nov 2026 washer-hub refresh. Only that page uses it.
 TODAY4 = "2026-11-20"
 TODAY4_H = "20 Nov 2026"
+# TODAY5 is the 21 Nov 2026 Whirlpool range F-code pass and the Bosch dishwasher reread.
+# Only pages whose text changed that day use it.
+TODAY5 = "2026-11-21"
+TODAY5_H = "21 Nov 2026"
+_DATE_H = {TODAY: TODAY_H, TODAY2: TODAY2_H, TODAY3: TODAY3_H, TODAY4: TODAY4_H, TODAY5: TODAY5_H}
+# Photo bank file oven-control-panel.png was not on disk for this run.
+# Leave empty so no page points at a missing file. Set this to
+# "/assets/photos/oven-control-panel.png" only after that file is committed.
+OVEN_THUMB = ""
 INDEXNOW_KEY = "e5e7fc4f0a0e96a11d330aa8cf3cba1c"
 CF_BEACON_TOKEN = "eac63f2b5dbc4539a2d95249baab6472"
 FORM_ENDPOINT = "https://formsubmit.co/joshuaofisrael@gmail.com"
@@ -227,9 +236,10 @@ def next_reads(items, heading="Keep reading", hid="nr-h"):
     for href, title, blurb, img in items:
         thumb = ""
         if img:
+            # The picture links to the image policy. The title link is the next read.
             thumb = (
-                f'<a class="nr-thumb" href="{E(href)}" tabindex="-1" aria-hidden="true">'
-                f'<img src="{E(img)}" alt="" width="320" height="180" loading="lazy"></a>'
+                f'<a class="nr-thumb" href="/image-policy/">'
+                f'<img src="{E(img)}" alt="AI-generated image" width="320" height="180" loading="lazy"></a>'
             )
         cards.append(
             f'<li>{thumb}<div><a href="{E(href)}"><strong>{E(title)}</strong></a>'
@@ -284,8 +294,10 @@ def safety_for(r):
         extra = "<p>Samsung's refrigerator code page says not to unplug the refrigerator, and not to press buttons to hide a code, unless the steps for that code tell you to. Unplugging can make the fault harder to diagnose. The unplug step in the box above is for checks that require you to move the cabinet or open a panel.</p>"
     return SAFETY + extra
 
-def code_page(r, new=False):
-    d, dh = (TODAY2, TODAY2_H) if new else (TODAY, TODAY_H)
+def code_page(r, published=None, modified=None):
+    d_pub = published or TODAY
+    d_mod = modified or d_pub
+    dh = _DATE_H.get(d_mod, TODAY_H)
     path = code_path(r)
     b, a = BNAME[r["brand"]], ANAME[r["appl"]]
     title = f"{b} {a} {r['code']} Error Code"
@@ -321,8 +333,8 @@ def code_page(r, new=False):
 {more}
 <p><a href="{listing_path(r["brand"], r["appl"])}">All {E(b)} {E(a.lower())} codes</a> · <a href="/brands/{r["brand"]}/">{E(b)}</a> · <a href="/appliances/{APLUR[r["appl"]]}/">{E(a)} brands</a> · <a href="/guides/safety/">Safety notes</a> · <a href="/codes/">All error codes</a></p>
 </article>'''
-    write(path, page(path, title, desc, body, [article_ld(f"{b} {a.lower()} code {r['code']}", path, f"{b} {r['code']}", published=d, modified=d), faq_ld(faqs)],
-                    [("/", "Home"), ("/codes/", "Error codes"), (listing_path(r["brand"], r["appl"]), f"{b} {a}"), (path, r["code"])], lastmod=d))
+    write(path, page(path, title, desc, body, [article_ld(f"{b} {a.lower()} code {r['code']}", path, f"{b} {r['code']}", published=d_pub, modified=d_mod), faq_ld(faqs)],
+                    [("/", "Home"), ("/codes/", "Error codes"), (listing_path(r["brand"], r["appl"]), f"{b} {a}"), (path, r["code"])], lastmod=d_mod))
 
 def listing_page(brand, appl, rows, new=False):
     d, dh = (TODAY2, TODAY2_H) if new else (TODAY, TODAY_H)
@@ -387,8 +399,13 @@ def brand_pages():
             (f"Why is a {name} code missing?",
              "A code is missing when it was not on the manufacturer page we checked. We do not add codes from repair blogs or from another brand."),
         ]
-        # ge gained an oven listing on 18 Nov 2026; every other brand page is unchanged from 16 Nov.
-        dh, lm = (TODAY2_H, TODAY2) if slug == "ge" else (None, None)
+        # ge gained an oven listing on 18 Nov 2026. Whirlpool's oven count changed 21 Nov 2026.
+        if slug == "ge":
+            dh, lm = TODAY2_H, TODAY2
+        elif slug == "whirlpool":
+            dh, lm = TODAY5_H, TODAY5
+        else:
+            dh, lm = None, None
         body = f'''<article class="prose"><h1>{E(name)} error codes</h1>
 {byline(dh)}
 <p class="answer">Pick the appliance. Every code is cited to a {E(name)} manual or support page. We leave out codes we have not checked on that page.</p>
@@ -425,6 +442,361 @@ def brand_pages():
     write("/brands/", page("/brands/", f"Appliance Error Codes by Brand | {BRAND}", "Samsung, LG, GE Appliances, Whirlpool, Maytag, KitchenAid, and Bosch error codes, each cited to the manufacturer.",
                           body, [article_ld("Error codes by brand", "/brands/", modified=TODAY2), faq_ld(faqs)],
                           [("/", "Home"), ("/brands/", "Brands")], lastmod=TODAY2))
+
+def _oven_reads(items, heading, hid):
+    """Next-read cards. Oven articles pass OVEN_THUMB; an empty path draws no image."""
+    packed = []
+    for href, title, blurb in items:
+        img = OVEN_THUMB if OVEN_THUMB and "/oven" in href else None
+        packed.append((href, title, blurb, img))
+    return next_reads(packed, heading, hid)
+
+def whirlpool_oven_table(rows):
+    body = []
+    for r in rows:
+        code_cell = f'<a href="{code_path(r)}">{E(r["code"])}</a>' if r["individual"] else E(r["code"])
+        step = E(r["extra"]) if r["extra"] else "Breaker reset only."
+        body.append(f'<tr id="{E(r["slug"])}"><td>{code_cell}</td><td>{E(r["meaning"])}</td><td>{step}</td></tr>')
+    return ('<div class="tablewrap"><table class="list"><thead><tr>'
+            "<th>Code</th><th>What that Whirlpool page says</th><th>Anything besides the reset</th>"
+            "</tr></thead><tbody>" + "".join(body) + "</tbody></table></div>")
+
+def whirlpool_oven_pages():
+    """21 Nov 2026: range F codes opened on Whirlpool Product Help. Hub plus two full pages."""
+    rows = [r for r in ROWS if r["brand"] == "whirlpool" and r["appl"] == "oven"]
+    path = "/codes/whirlpool/oven/"
+    index_src = ("Whirlpool Product Help: range codes that start with F",
+                 "https://producthelp.whirlpool.com/Cooking/Wall_Ovens_and_Ranges/Ranges/Error_Codes/Starts_with_F")
+    faqs = [
+        ("What does a Whirlpool oven F code mean?",
+         "It depends on the rest of the code. On the range pages opened 21 Nov 2026, Whirlpool gives almost every code the same owner step, a 1 minute breaker reset, and then names a different part. F1 E1 names the oven control. F2 E1 starts by asking whether the grates sit level. F3 E1 names the oven temperature sensor."),
+        ("Should I replace the part Whirlpool names?",
+         "No. Those pages tell you to reset power and to schedule service if the code comes back. They do not publish a procedure for replacing a control, a sensor, a latch, a fan, or an element. Unplug the appliance or switch off the breaker before you move the range. Shut the gas off before any inspection past the published reset."),
+        ("Does this table cover a Whirlpool wall oven?",
+         "No. This is the freestanding and slide-in range list. Whirlpool publishes wall oven codes separately, and that list was not opened on 21 Nov 2026. Use the manual for a wall oven."),
+    ]
+    mid = _oven_reads([
+        ("/codes/whirlpool/oven/f2-e1/", "Whirlpool F2 E1", "The one F code that starts with the cooktop grates, while the range is cool."),
+        ("/codes/whirlpool/oven/f1-e1/", "Whirlpool F1 E1", "Oven control or wiring. The same sentence as several other F1 codes, and not the sensor."),
+        ("/codes/ge/oven/", "GE oven codes", "GE's F2 is an over-temperature code. GE's F0 and F1 name the keypanel."),
+        ("/codes/samsung/oven/c-24/", "Samsung C-24", "Samsung's fast temperature rise is usually a blocked vent, not an F code."),
+    ], "Open one of these next", "nr-mid")
+    end = _oven_reads([
+        ("/appliances/ovens/", "Oven codes by brand", "How Whirlpool, GE, and Samsung name different faults with similar letters."),
+        ("/codes/ge/oven/loc-door/", "GE Loc Door", "A self-clean latch display with its own reset. Whirlpool's latch codes do not use those steps."),
+        ("/guides/safety/", "Safety notes", "Unplug before you move a range. Shut the gas off before you go past the published check."),
+        ("/brands/whirlpool/", "Whirlpool hub", "Washer, dryer, dishwasher, and refrigerator codes, separate from this range list."),
+    ], "Keep reading", "nr-end")
+    compare = compare_box(
+        "Check another oven",
+        [
+            ("/codes/whirlpool/oven/f2-e1/", "Whirlpool F2 E1, the grate check"),
+            ("/codes/whirlpool/oven/f1-e1/", "Whirlpool F1 E1, the oven control"),
+            ("/codes/ge/oven/", "GE Appliances oven codes"),
+            ("/codes/samsung/oven/", "Samsung oven codes"),
+            ("/appliances/ovens/", "All oven brands"),
+            ("/brands/lg/", "LG brand hub"),
+        ],
+        "A Whirlpool range code does not transfer to a GE oven, a Samsung oven, or an LG appliance.",
+    )
+    body = f'''<article class="prose wide"><h1>Whirlpool oven F codes</h1>
+{byline(TODAY5_H)}
+{article_thumb(OVEN_THUMB, "Unbranded oven control panel in ordinary indoor light")}
+<div class="answer"><p>On the range pages Whirlpool publishes, an F code is not one fault. The owner step on nearly every page is the same: turn the breaker off for 1 minute, turn it back on, and watch for 1 minute. What changes is the part the page names. <a href="/codes/whirlpool/oven/f1-e1/">F1 E1</a> names the oven control. <a href="/codes/whirlpool/oven/f2-e1/">F2 E1</a> first asks whether the cooktop grates sit level. <a href="#f3-e1">F3 E1</a> names the oven temperature sensor. If the code returns, Whirlpool says to schedule service.</p></div>
+{SAFETY}
+<h2>The reset, written once</h2>
+<p>Whirlpool's wording on these pages is: power the unit down by turning off the circuit breaker for one minute, power it back up, monitor the oven for one minute so the code does not display again, and verify that the oven operates. That is a control reset, not a repair. Do not open the control, the keypad, a temperature sensor, a door latch, a fan, a bake or broil element, or any wiring. If the range burns gas, shut the gas supply off before any inspection past that reset. If you smell gas, leave and call the gas utility. The <a href="/guides/safety/">safety notes</a> cover the same stop point, including the anti-tip bracket before you pull a range out.</p>
+{mid}
+<h2>The letter does not tell you the part</h2>
+<p>F1 is a family, not a meaning. F1 E1, F1 E0, F1 E2, F1 E5, F1-7, F1-9, F1-E, F3, and F6 all say there may be a problem with the oven control or the associated wiring. F1 E7 and F1 E9 name the appliance control board instead. F03 and F04 say electronic oven control. F06 says electronic control. F0 E0 says a component of the oven control system. Treat those as different sentences, because Whirlpool wrote them that way.</p>
+<p>The sensor sentence is a different group, and it includes codes that do not start with F3. F01, F02, F1, F1-1, F1-2, F1-3, F1-H, F1-L, F2, F3-1, F3 E0, and F3 E1 all name the oven temperature sensor, the control, or the wiring. F3 E2 adds the warming drawer sensor on a range that has one. F3 E3 names the sensor or the wiring and does not mention the control. A reader who only remembers "F3 means the sensor" will misread F3, which is the control sentence, and will miss F1 and F2, which are the sensor sentence.</p>
+<p><a href="/codes/ge/oven/">GE's oven page</a> does not match this map. GE's F0, F1, F6, and F7 share one meaning, a keypanel problem, and GE says the keypanel often needs to be replaced. GE's F3 and F4 name the oven sensor. GE's F2 means the oven temperature exceeded a preset threshold. <a href="/codes/samsung/oven/">Samsung</a> does not use this F list at all. Samsung's <a href="/codes/samsung/oven/c-24/">C-24</a> is a temperature that rises faster than normal, and Samsung says that is generally a blocked vent. Use the brand printed on the appliance. The <a href="/appliances/ovens/">oven hub</a> puts those three side by side. <a href="/brands/lg/">LG's other appliances</a> are a separate list. This site does not have an LG oven page.</p>
+<h2>Two checks that are not only the breaker</h2>
+<p><a href="/codes/whirlpool/oven/f2-e1/">F2 E1</a> is the grate page. When the range is cool, rock each grate corner to corner and side to side. If it wobbles, it may be installed backwards, so switch the grates, then cycle power. The same page still names the user interface or keypad, the control, or the wiring. F2 E0 and F2 E2 through F2 E6 name that keypad sentence and skip the grates. Do not rock a hot grate.</p>
+<p><a href="#f3-e4">F3 E4</a> and <a href="#f8">F8</a> are the meat probe. Both pages say to verify the probe is securely inserted in the receptacle, and both say the location may vary. Then do the breaker reset. F8 is not the cooling fan. The fan codes are F7 E5, F7 E6, F8 E0, and F8 E2. F8 E0 says the cooling fan speed is too low and mentions an airflow restriction. F8 E2 says the speed is too high and does not mention a restriction. Neither page tells you to open the fan.</p>
+<h2>Door, heat, and Wi-Fi</h2>
+<p>Latch wording is not identical, so the table keeps it. F5 names the oven door latch assembly and the door latch switches. F5 E1, F5 E2, and F5 E3 say main oven door latch assembly and the door switch. F7 E1 names only the door switch. F7 E0 names the latch assembly and does not name the switch. F9-1, F9-2, F9-3, F1-A, and F1-C name the oven door latch and the door lock switch. None of those pages publish the button sequence on the <a href="/codes/ge/oven/loc-door/">GE Loc Door</a> page. Do not force a locked door.</p>
+<p><a href="#f5-e5">F5 E5</a> says the oven has not reached self-clean temperature after 30 minutes, and that there may be a problem with the door hinges or the door gasket. The only owner step is still the breaker reset. Do not take the door off. <a href="#fee6">FEE6</a> names the main cavity bake element. <a href="#fee7">FEE7</a> names the broil element. <a href="#fee8">FEE8</a> publishes the reset and names no part, so do not borrow the bake or broil meaning.</p>
+<p><a href="#fc-e1">FC E1</a> says the range could not connect to the router, and that there is no link between the Wi-Fi module and the router. The page adds a router reset: if another Wi-Fi device works at the range, disconnect router power for 2 minutes, reconnect it, then disconnect the range for 2 minutes and reconnect. If the signal there is weak, Whirlpool says you can move the router, use a compatible extender, or contact the internet provider. <a href="#fc-e7">FC E7</a> says the missing link is between the Wi-Fi module and the internet, and it tells you to start a cycle after the breaker reset. <a href="#fc-e8">FC E8</a> is a registration error: enter the SAID number again, and select the right appliance type and model. The other FC codes on Whirlpool's index were not opened on 21 Nov 2026 and are not in the table.</p>
+{compare}
+<h2>Every range page opened on 21 Nov 2026</h2>
+<p>Full pages exist only for <a href="/codes/whirlpool/oven/f1-e1/">F1 E1</a> and <a href="/codes/whirlpool/oven/f2-e1/">F2 E1</a>. F1 E1 already had a URL here. F2 E1 is the code with a check the others do not share. The rest stay in this table. Publishing a separate page for each breaker reset would be the same article with the code swapped. Whirlpool's index also lists FBE1 and FBE2. Those two pages were not opened, so they are not given a meaning here.</p>
+{whirlpool_oven_table(rows)}
+{faq_html(faqs)}
+{sources_html([index_src] + unique_sources(rows), f"Each linked page was opened {TODAY5_H}. Wall oven codes, FBE1, FBE2, and the FC codes missing from the table were not opened. {BRAND} is not affiliated with Whirlpool.")}
+{end}
+<p><a href="/brands/whirlpool/">All Whirlpool pages</a> · <a href="/appliances/ovens/">All oven brands</a> · <a href="/codes/ge/oven/">GE oven codes</a> · <a href="/codes/samsung/oven/">Samsung oven codes</a> · <a href="/guides/safety/">Safety notes</a></p>
+</article>'''
+    desc = "Whirlpool range F codes opened 21 Nov 2026. F1 E1 is the oven control. F2 E1 checks the grates. F3 E1 is the sensor."
+    write(path, page(path, "Whirlpool Oven F Codes: What Each One Names", desc, body,
+                    [article_ld("Whirlpool oven F codes", path, "Whirlpool oven", published=TODAY, modified=TODAY5), faq_ld(faqs)],
+                    [("/", "Home"), ("/codes/", "Error codes"), (path, "Whirlpool oven")], lastmod=TODAY5))
+    _wp_f1e1_page()
+    _wp_f2e1_page()
+
+def _wp_f1e1_page():
+    path = "/codes/whirlpool/oven/f1-e1/"
+    r = next(x for x in ROWS if x["brand"] == "whirlpool" and x["appl"] == "oven" and x["code"] == "F1 E1")
+    faqs = [
+        ("What does Whirlpool oven F1 E1 mean?",
+         "Whirlpool's range page says there may be a problem with the oven control, or the associated wiring. The same sentence is on F1 E0, F1 E2, F1 E5, F1-7, F1-9, F1-E, F3, and F6."),
+        ("What should I do for F1 E1?",
+         "Turn the breaker off for 1 minute, turn it back on, watch for 1 minute, and confirm the oven operates. Unplug the appliance before you move it. If the code returns, schedule service. Do not open the control."),
+        ("Is F1 E1 the temperature sensor?",
+         "No. The sensor sentence is on F3 E1 and on several codes that do not look like F3, including F1 and F2. F1 E1 is the control sentence. F2 E1 is the grate check."),
+    ]
+    mid = _oven_reads([
+        ("/codes/whirlpool/oven/f2-e1/", "Whirlpool F2 E1", "Check the grates while the range is cool, then reset power."),
+        ("/codes/whirlpool/oven/#f3-e1", "Whirlpool F3 E1", "The sensor sentence, in the range table. It is not this page."),
+        ("/codes/ge/oven/", "GE F0 and F1", "GE groups F0 and F1 as a keypanel fault and often a keypanel replacement."),
+        ("/codes/samsung/oven/c-f0/", "Samsung C-F0", "A communication error, with a firmware note on three induction model families."),
+    ], "Codes people mix up with F1 E1", "nr-mid")
+    end = _oven_reads([
+        ("/codes/whirlpool/oven/", "All Whirlpool range F codes", "The table of every range page opened 21 Nov 2026, including the ones that share this sentence."),
+        ("/appliances/ovens/", "Oven codes by brand", "Whirlpool, GE, and Samsung do not share an F-code dictionary."),
+        ("/guides/safety/", "Safety notes", "Shut the gas off before you go past a published reset on a gas range."),
+        ("/brands/whirlpool/", "Whirlpool hub", "The washer drain codes are a different article."),
+    ], "Keep reading", "nr-end")
+    compare = compare_box(
+        "Check a different code",
+        [
+            ("/codes/whirlpool/oven/f2-e1/", "F2 E1, grates then keypad"),
+            ("/codes/whirlpool/oven/#f3-e1", "F3 E1, temperature sensor"),
+            ("/codes/whirlpool/oven/#f1-e7", "F1 E7, appliance control board"),
+            ("/codes/ge/oven/", "GE oven codes"),
+            ("/codes/samsung/oven/", "Samsung oven codes"),
+        ],
+        "Same brand, different part. Then a different brand entirely, if the name on the oven is not Whirlpool.",
+    )
+    body = f'''<article class="prose wide"><h1>Whirlpool oven code F1 E1</h1>
+{byline(TODAY5_H)}
+{article_thumb(OVEN_THUMB, "Unbranded oven control panel in ordinary indoor light")}
+<div class="answer"><p><strong>Meaning:</strong> Whirlpool's range page says there may be a problem with the oven control, or the associated wiring. Reset the breaker for 1 minute. If F1 E1 returns, schedule service. This is not the temperature sensor, and it is not the grate check.</p></div>
+{SAFETY}
+<h2>The check Whirlpool publishes</h2>
+<ul class="checks"><li>Turn the circuit breaker off for 1 minute, then turn it back on.</li>
+<li>Watch for 1 minute. Confirm F1 E1 stays off, then confirm the oven operates.</li></ul>
+<p>That is the whole owner procedure on the F1 E1 page. Whirlpool then says to schedule service. Do not open the control or the wiring to see which one it is. On a gas range, shut the gas supply off before any inspection past this reset. The same control sentence, checked the same day, is on F1 E0, F1 E2, F1 E5, F1-7, F1-9, F1-E, bare F3, and bare F6. Those stay on the <a href="/codes/whirlpool/oven/">range table</a> rather than as copies of this page. F1 E7 and F1 E9 are close but not the same: they name the appliance control board.</p>
+{mid}
+<h2>Codes that look related and are not</h2>
+<p><a href="/codes/whirlpool/oven/f2-e1/">F2 E1</a> starts with the cooktop grates, and only then names the keypad, the control, or the wiring. <a href="/codes/whirlpool/oven/#f3-e1">F3 E1</a> names the oven temperature sensor, the control, or the wiring. So does bare F1, which is easy to confuse with F1 E1 if the display is hard to read. Write down the full code before you pick a row. <a href="/codes/ge/oven/">GE</a> uses F1 for the keypanel, often as a replacement, after a 1 to 2 minute breaker reset. <a href="/codes/samsung/oven/c-f0/">Samsung C-F0</a> is a communication error, and on three induction model families Samsung publishes a SmartThings firmware update. None of those steps are on Whirlpool's F1 E1 page.</p>
+{compare}
+<h2>When to call a technician</h2>
+<p>{E(r["service"])}</p>
+{faq_html(faqs)}
+{sources_html(r["sources"] + [("Whirlpool Product Help: range codes that start with F", "https://producthelp.whirlpool.com/Cooking/Wall_Ovens_and_Ranges/Ranges/Error_Codes/Starts_with_F")], f"F1 E1 and the sibling control pages were opened {TODAY5_H}. GE oven pages were last read {TODAY2_H}. Samsung C-F0 was last read {TODAY_H}. {BRAND} is not affiliated with Whirlpool.")}
+{end}
+<p><a href="/codes/whirlpool/oven/">All Whirlpool oven F codes</a> · <a href="/appliances/ovens/">Oven brands</a> · <a href="/brands/whirlpool/">Whirlpool</a> · <a href="/guides/safety/">Safety notes</a></p>
+</article>'''
+    desc = "Whirlpool range F1 E1 is the oven control or its wiring. Breaker off for 1 minute. Not the sensor and not the grates."
+    ld = article_ld("Whirlpool oven code F1 E1", path, "Whirlpool F1 E1", published=TODAY, modified=TODAY5)
+    if OVEN_THUMB:
+        ld["image"] = url(OVEN_THUMB)
+    write(path, page(path, "Whirlpool F1 E1: Oven Control, Not the Sensor", desc, body, [ld, faq_ld(faqs)],
+                    [("/", "Home"), ("/codes/", "Error codes"), ("/codes/whirlpool/oven/", "Whirlpool oven"), (path, "F1 E1")], lastmod=TODAY5))
+
+def _wp_f2e1_page():
+    path = "/codes/whirlpool/oven/f2-e1/"
+    r = next(x for x in ROWS if x["brand"] == "whirlpool" and x["appl"] == "oven" and x["code"] == "F2 E1")
+    faqs = [
+        ("What does Whirlpool oven F2 E1 mean?",
+         "Whirlpool asks first whether the cooktop grates are installed properly and level. If a cool grate wobbles, it may be in backwards. The same page then says there may be a problem with the user interface or keypad, the control, or the wiring."),
+        ("What should I check before I call for F2 E1?",
+         "With the range cool, rock each grate corner to corner and side to side. Switch any grate that wobbles, then turn the breaker off for 1 minute and back on. Watch for 1 minute. Unplug the appliance before you move the range."),
+        ("Is Whirlpool F2 E1 the same as GE F2?",
+         "No. GE's F2 page says the oven temperature exceeded a preset threshold, and the owner step there is a breaker reset. GE does not mention the grates."),
+    ]
+    mid = _oven_reads([
+        ("/codes/whirlpool/oven/f1-e1/", "Whirlpool F1 E1", "Oven control or wiring, with no grate check."),
+        ("/codes/whirlpool/oven/#f2-e0", "Whirlpool F2 E0", "The keypad sentence without the grate step. It lives in the range table."),
+        ("/codes/ge/oven/", "GE oven F2", "GE's F2 is an over-temperature code, not a grate code."),
+        ("/codes/samsung/oven/door/", "Samsung door code", "A different oven, and a plunger check rather than cooktop grates."),
+    ], "What to open if F2 E1 is not your code", "nr-mid")
+    end = _oven_reads([
+        ("/codes/whirlpool/oven/", "Whirlpool range F-code table", "Every range page opened 21 Nov 2026, with the part each one names."),
+        ("/appliances/ovens/", "Oven codes by brand", "Start here if the brand on the oven is not Whirlpool."),
+        ("/guides/safety/", "Safety notes", "Do not work over a hot grate. Shut the gas off past the published checks."),
+        ("/codes/samsung/oven/", "Samsung oven codes", "C-24, the door plunger, and the other Samsung range codes on this site."),
+    ], "Keep reading", "nr-end")
+    compare = compare_box(
+        "Check another code",
+        [
+            ("/codes/whirlpool/oven/f1-e1/", "Whirlpool F1 E1, oven control"),
+            ("/codes/whirlpool/oven/#f2-e0", "Whirlpool F2 E0, keypad only"),
+            ("/codes/whirlpool/oven/#f8", "Whirlpool F8, meat probe"),
+            ("/codes/ge/oven/", "GE oven codes"),
+            ("/appliances/ovens/", "All oven brands"),
+        ],
+        "F2 E1 is the grate page. The keypad-only F2 codes and the other brands are separate.",
+    )
+    body = f'''<article class="prose wide"><h1>Whirlpool oven code F2 E1</h1>
+{byline(TODAY5_H)}
+{article_thumb(OVEN_THUMB, "Unbranded oven control panel in ordinary indoor light")}
+<div class="answer"><p><strong>Meaning:</strong> Whirlpool's first question is whether the cooktop grates are installed properly and sit level. A grate that wobbles, checked only when the range is cool, may be in backwards. If the code remains after you switch the grates and reset power, the same page names the user interface or keypad, the control, or the wiring, and says to schedule service.</p></div>
+{SAFETY}
+<h2>The grate check, then the reset</h2>
+<ul class="checks">
+<li>Wait until the range is cool. Do not rock a hot grate.</li>
+<li>Rock each grate corner to corner and side to side. If it wobbles, Whirlpool says it may be installed backwards. Switch the grates so they sit level.</li>
+<li>Cycle power: breaker off for 1 minute, then on. Watch for 1 minute and confirm the oven operates.</li>
+</ul>
+<p>F2 E0, F2 E2, F2 E3, F2 E4, F2 E5, and F2 E6 use the keypad sentence and do not ask about the grates. Those rows are on the <a href="/codes/whirlpool/oven/">range table</a>. Bare F2 is a different page again: it names the oven temperature sensor, the control, or the wiring. Read the full display. F2 and F2 E1 are not the same code.</p>
+{mid}
+<h2>What this is not</h2>
+<p><a href="/codes/whirlpool/oven/f1-e1/">F1 E1</a> skips the grates and names the oven control. <a href="/codes/ge/oven/">GE's F2</a> says the oven temperature exceeded a preset threshold. The GE page's owner step is a 1 to 2 minute breaker reset, with service if it returns. It does not mention grates. <a href="/codes/samsung/oven/door/">Samsung's door code</a> is a plunger at the door, about three quarters of an inch when the door is open. Cooktop grates do not clear a Samsung door code, and a Samsung plunger check does not clear Whirlpool F2 E1.</p>
+{compare}
+<h2>When to call a technician</h2>
+<p>{E(r["service"])}</p>
+{faq_html(faqs)}
+{sources_html(r["sources"] + [("Whirlpool Product Help: range codes that start with F", "https://producthelp.whirlpool.com/Cooking/Wall_Ovens_and_Ranges/Ranges/Error_Codes/Starts_with_F"), ("GE Appliances: range and wall oven error codes", "https://products.geappliances.com/appliance/gea-support-search-content?contentId=16238")], f"Whirlpool F2 E1 was opened {TODAY5_H}. The GE oven page was last read {TODAY2_H}. {BRAND} is not affiliated with Whirlpool.")}
+{end}
+<p><a href="/codes/whirlpool/oven/">All Whirlpool oven F codes</a> · <a href="/appliances/ovens/">Oven brands</a> · <a href="/codes/ge/oven/">GE oven codes</a> · <a href="/guides/safety/">Safety notes</a></p>
+</article>'''
+    desc = "Whirlpool range F2 E1: level the cool grates, then reset the breaker for 1 minute. The keypad is the next line on Whirlpool's page."
+    ld = article_ld("Whirlpool oven code F2 E1", path, "Whirlpool F2 E1", published=TODAY5, modified=TODAY5)
+    if OVEN_THUMB:
+        ld["image"] = url(OVEN_THUMB)
+    write(path, page(path, "Whirlpool F2 E1: Check the Grates First", desc, body, [ld, faq_ld(faqs)],
+                    [("/", "Home"), ("/codes/", "Error codes"), ("/codes/whirlpool/oven/", "Whirlpool oven"), (path, "F2 E1")], lastmod=TODAY5))
+
+def bosch_dishwasher_page():
+    """21 Nov 2026 reread of Bosch's dishwasher code page. E22 gained drain steps."""
+    path = "/codes/bosch/dishwasher/"
+    rows = [r for r in ROWS if r["brand"] == "bosch" and r["appl"] == "dishwasher"]
+    faqs = [
+        ("What changed on the Bosch dishwasher page?",
+         "On 21 Nov 2026 the E22 entry still starts with a blocked filter, and it also lists a blocked or loose drain pump cover, a kinked drain pump hose, and a clogged air gap or drain hose. E15, E16, E17, E18, E09, E12, and E14 still match the earlier reading."),
+        ("What does Bosch E22 mean?",
+         "The filter is blocked. Wash it under running water with mild soap and a soft brush and put it back. If the pump cover is loose or the pump is blocked, clear debris and click the cover shut. Straighten the drain pump hose. Then check the air gap and the drain hose."),
+        ("What does Bosch E15 mean?",
+         "The safety switch has detected water in the base, and leak protection has activated. Turn off the water inflow and contact Bosch. Do not keep using the dishwasher."),
+    ]
+    mid = next_reads([
+        ("/codes/bosch/dishwasher/e22/", "Bosch E22", "Filter, drain pump cover, hose, and air gap. The individual page now carries the 21 Nov steps.", None),
+        ("/codes/bosch/dishwasher/e15/", "Bosch E15", "Water in the base. Turn the inflow off and contact Bosch.", None),
+        ("/codes/bosch/dishwasher/#e18", "Bosch E18", "Low water or poor pumping. Bosch states a 10 liter a minute supply.", None),
+        ("/codes/kitchenaid/dishwasher/", "KitchenAid dishwasher codes", "F9E1 is a long drain. A different maker, and a different list.", None),
+    ], "Dishwasher codes to open next", "nr-mid")
+    end = next_reads([
+        ("/codes/whirlpool/dishwasher/", "Whirlpool dishwasher codes", "A separate brand. Do not copy a Bosch step onto a Whirlpool display.", None),
+        ("/appliances/dishwashers/", "Dishwasher codes by brand", "Samsung, LG, GE, Bosch, KitchenAid, and Whirlpool hubs.", None),
+        ("/guides/safety/", "Safety notes", "Unplug before you move the dishwasher. Shut the water off on a leak code.", None),
+        ("/brands/bosch/", "Bosch hub", "Washer codes are the other Bosch list on this site.", None),
+    ], "Keep reading", "nr-end")
+    compare = compare_box(
+        "Check another dishwasher",
+        [
+            ("/codes/bosch/dishwasher/e22/", "Bosch E22"),
+            ("/codes/bosch/dishwasher/e15/", "Bosch E15"),
+            ("/codes/bosch/dishwasher/e16/", "Bosch E16 and E17"),
+            ("/codes/kitchenaid/dishwasher/", "KitchenAid dishwasher codes"),
+            ("/codes/samsung/dishwasher/", "Samsung dishwasher codes"),
+            ("/appliances/dishwashers/", "All dishwasher brands"),
+        ],
+        "Stay with the brand on the door. E22 on this page is Bosch's wording.",
+    )
+    bits = []
+    for r in rows:
+        alias = f" Also listed as {', '.join(r['aliases'])}." if r["aliases"] else ""
+        more = f' <a href="{code_path(r)}">Full page for {E(r["code"])}</a>.' if r["individual"] else ""
+        bits.append(f'<h3 id="{r["slug"]}">{E(r["code"])}</h3><p>{E(r["meaning"])}{E(alias)} {" ".join(E(c) for c in r["checks"])} {E(r["service"])}{more}</p>')
+    body = f'''<article class="prose wide"><h1>Bosch dishwasher error codes</h1>
+{byline(TODAY5_H)}
+<div class="answer"><p>Bosch's dishwasher code page was opened again on 21 Nov 2026. The change that matters is <a href="#e22">E22</a>. It still means a blocked filter, and the same entry now walks through the drain pump cover, the drain pump hose, and the air gap or drain hose. <a href="#e15">E15</a> is still water in the base: turn the inflow off and contact Bosch. The other codes already on this page still match.</p></div>
+{SAFETY}
+<h2>E22, reread 21 Nov 2026</h2>
+<p>Bosch says the filter is where food particles collect and that it needs regular cleaning. Remove it, wash it under running water with mild soap and a soft brush, and reinstall it. Bosch links a longer filter article and a video. Those were not opened, so the steps above are the ones on the code page itself.</p>
+<p>The same E22 entry then says the drain pump may be blocked or the cover loose. Remove the cover, clear standing water and loose debris, and replace the cover so it clicks. Check the drain pump hose for a kink or a sharp bend. For the air gap or the drain hose, turn the dishwasher off, check the air gap, disconnect the hose into a bucket, clear debris, reconnect it, and start a rinse. If E22 remains, Bosch points to a separate reset article. That article was not opened on 21 Nov 2026, so its steps are not copied here. Contact Bosch if the code is still there. Details also sit on the <a href="/codes/bosch/dishwasher/e22/">E22 page</a>.</p>
+<p>Bosch gives <a href="#e24">E24</a> and E25, which this site does not publish as their own pages, the pump, hose, and air gap steps without the filter wash. E23 says the drain pump is blocked, clogged, or faulty, and it does not add those steps. Use the code on your display. Do not treat every drain code as E22.</p>
+{mid}
+<h2>The codes that still match</h2>
+<p><a href="/codes/bosch/dishwasher/e15/">E15</a> means the safety switch detected water in the base and leak protection has activated. Turn off the water inflow and contact Bosch. Do not keep the dishwasher running. <a href="#e16">E16 and E17</a> mean water is not entering, or the filling system has a problem. Check that the inlet hose is not kinked or damaged, then contact Bosch. <a href="#e18">E18</a> is the flow into the dishwasher: the level is too low, or water is not being pumped correctly. Bosch says to check the inlet hose and to confirm the supply is on, and it states a flow of 10 liters a minute. <a href="#e09">E09</a> is a heat pump internal heater fault. The published step is a 30 second breaker reset, then support. Do not open the heater. <a href="#e12">E12</a> is limescale in the heat pump. Bosch says to descale, and to use softening salt if the dishwasher has a softener. <a href="#e14">E14</a> names a flow meter failure or a fill problem and does not add an owner procedure.</p>
+{"".join(bits)}
+{compare}
+<p>E24 and E25 are mentioned above because the 21 Nov reread showed they share the drain steps. They are not separate pages here. A KitchenAid drain code such as the ones on the <a href="/codes/kitchenaid/dishwasher/">KitchenAid dishwasher hub</a>, or a Whirlpool dishwasher code, is a different manufacturer page. The <a href="/appliances/dishwashers/">dishwasher hub</a> is the brand list. Unplug the dishwasher before you pull it out. Shut the water off if water is reaching the floor. The <a href="/guides/safety/">safety notes</a> say the same thing.</p>
+{faq_html(faqs)}
+{sources_html(unique_sources(rows), f"Bosch's dishwasher error code page was opened {TODAY5_H}. The filter-cleaning article, the how-to video, and the separate reset article linked from that page were not opened, so their steps are not copied. {BRAND} is not affiliated with Bosch.")}
+{end}
+<p><a href="/brands/bosch/">All Bosch pages</a> · <a href="/appliances/dishwashers/">All dishwasher brands</a> · <a href="/guides/safety/">Safety notes</a></p>
+</article>'''
+    # The hand-written sections already explain E24. Drop the empty anchor promise if we never emit id e24.
+    body = body.replace('<a href="#e24">E24</a>', "E24")
+    desc = "Bosch dishwasher codes reread 21 Nov 2026. E22 adds the drain pump, hose, and air gap. E15 still means water in the base."
+    write(path, page(path, "Bosch Dishwasher Codes, Reread for E22", desc, body,
+                    [article_ld("Bosch dishwasher error codes", path, "Bosch dishwasher", published=TODAY, modified=TODAY5), faq_ld(faqs)],
+                    [("/", "Home"), ("/codes/", "Error codes"), (path, "Bosch dishwasher")], lastmod=TODAY5))
+
+def oven_appliance_page():
+    """Comparison hub. Whirlpool rows are from 21 Nov 2026. GE and Samsung dates stay on their pages."""
+    path = "/appliances/ovens/"
+    faqs = [
+        ("Which oven brand should I open?",
+         "Open the brand printed on the oven. Whirlpool F1 E1 names the oven control. GE's F1 names the keypanel. Samsung does not use that F list."),
+        ("Does F2 mean the same thing on Whirlpool and GE?",
+         "No. Whirlpool F2 E1 starts with the cooktop grates. GE's F2 page says the oven temperature exceeded a preset threshold. Samsung's fast temperature code is C-24, and Samsung says it is generally a blocked vent."),
+        ("Which checks are safe on an oven?",
+         "Only the checks on that brand's page. Unplug the appliance or switch off the breaker before you move it. Shut the gas off before any step the manufacturer did not publish."),
+    ]
+    mid = _oven_reads([
+        ("/codes/whirlpool/oven/", "Whirlpool range F codes", "Control, sensor, grates, latch, fan, and Wi-Fi, from the pages opened 21 Nov 2026."),
+        ("/codes/ge/oven/", "GE oven codes", "Keypanel, sensor, over-temp, and the Loc Door reset. Last read 18 Nov 2026."),
+        ("/codes/samsung/oven/", "Samsung oven codes", "C-24, the door plunger, bAd LinE, and the other codes last read 16 Nov 2026."),
+        ("/codes/whirlpool/oven/f2-e1/", "Whirlpool F2 E1", "The grate check. Do not use it on a GE oven."),
+    ], "Start with the brand on the oven", "nr-mid")
+    end = _oven_reads([
+        ("/codes/ge/oven/loc-door/", "GE Loc Door", "A flashing LOC DOOR with a reset that Whirlpool's latch pages do not publish."),
+        ("/codes/samsung/oven/c-24/", "Samsung C-24", "Clear the vent. Opening and closing the door can clear it while cooking."),
+        ("/guides/safety/", "Safety notes", "Gas shutoff, the anti-tip bracket, and when to stop."),
+        ("/brands/lg/", "LG brand hub", "LG washer, dryer, dishwasher, and refrigerator codes. No LG oven page yet."),
+    ], "Keep reading", "nr-end")
+    compare = compare_box(
+        "Check another oven",
+        [
+            ("/codes/whirlpool/oven/", "Whirlpool range F codes"),
+            ("/codes/ge/oven/", "GE Appliances oven codes"),
+            ("/codes/samsung/oven/", "Samsung oven codes"),
+            ("/brands/lg/", "LG brand hub"),
+            ("/codes/", "All error codes"),
+        ],
+        "Pick the name on the appliance. These three lists were not written as one code set.",
+    )
+    cards = []
+    for slug, name in BRANDS:
+        rows = [r for r in ROWS if r["brand"] == slug and r["appl"] == "oven"]
+        if not rows:
+            continue
+        preview = ", ".join(r["code"] for r in rows[:6])
+        cards.append(f'<li class="card"><h2><a href="{listing_path(slug, "oven")}">{E(name)} oven codes</a></h2><p>{E(preview)}</p></li>')
+    sources = [
+        ("Whirlpool Product Help: range codes that start with F", "https://producthelp.whirlpool.com/Cooking/Wall_Ovens_and_Ranges/Ranges/Error_Codes/Starts_with_F"),
+        ("GE Appliances: range and wall oven error codes", "https://products.geappliances.com/appliance/gea-support-search-content?contentId=16238"),
+        ("Samsung US support: range and wall oven error codes", "https://www.samsung.com/us/support/troubleshoot/TSG10003529/"),
+    ]
+    body = f'''<article class="prose"><h1>Oven error codes by brand</h1>
+{byline(TODAY5_H)}
+{article_thumb(OVEN_THUMB, "Unbranded oven control panel in ordinary indoor light")}
+<p class="answer">The letters do not travel. <a href="/codes/whirlpool/oven/f1-e1/">Whirlpool F1 E1</a> names the oven control or its wiring. GE's F0, F1, F6, and F7 page names the keypanel, and GE says it often needs to be replaced. Samsung does not publish that F list. Start with the name on the oven, then the code.</p>
+<h2>Three F-looking codes that are not the same fault</h2>
+<p>Whirlpool's range pages were opened {TODAY5_H}. <a href="/codes/whirlpool/oven/f2-e1/">F2 E1</a> asks whether the cooktop grates sit level, and only then names the keypad or the control. GE's F2, on the page last read {TODAY2_H}, says the oven temperature exceeded a preset threshold. The GE owner step is a breaker reset of 1 to 2 minutes, then service if it returns. Samsung's <a href="/codes/samsung/oven/c-24/">C-24</a>, last read {TODAY_H}, is a temperature that rises faster than normal. Samsung says that is generally a blocked vent on the back of the cooktop, and that you can clear it while cooking by opening and closing the door a few times.</p>
+<p>The sensor words diverge the same way. Whirlpool <a href="/codes/whirlpool/oven/#f3-e1">F3 E1</a> names the oven temperature sensor, the control, or the wiring, and so do F1 and F2, which do not look like sensor codes. GE's F3 and F4 share one line: the oven sensor usually needs to be replaced. A Whirlpool reset does not become a GE parts instruction, and a GE keypanel note does not become a Whirlpool repair.</p>
+{mid}
+<h2>Door displays</h2>
+<p>Whirlpool's F5, F9-1, and F7 E1 pages name a latch or a door switch and then give the 1 minute breaker reset. They do not publish the motorized-switch steps on <a href="/codes/ge/oven/loc-door/">GE Loc Door</a>. Samsung's <a href="/codes/samsung/oven/door/">door code</a> is the round black plunger, which should stick out about three quarters of an inch when the door is open. Use the page that matches the brand. Do not force a door that is locked after self-clean.</p>
+{compare}
+<h2>Brand pages</h2>
+<ul class="cards">{"".join(cards)}</ul>
+<p>Whirlpool's table is the long one, because Whirlpool publishes a page per code and most of those pages share the breaker reset. GE and Samsung already had hubs. There is no LG oven page on this site yet. <a href="/brands/lg/">LG's brand hub</a> covers the washer, dryer, dishwasher, and refrigerator codes we have checked. If the code is missing, it is missing because that maker's page was not the source. Unplug the appliance before you move it. Shut the gas off before any step the cited page does not list. The <a href="/guides/safety/">safety notes</a> include the anti-tip bracket.</p>
+{faq_html(faqs)}
+{sources_html(sources, f"Whirlpool range index opened {TODAY5_H}. GE oven page last read {TODAY2_H}. Samsung oven page last read {TODAY_H}. Those earlier pages were not rewritten today. {BRAND} is not affiliated with these makers.")}
+{end}
+<p><a href="/appliances/">All appliance types</a> · <a href="/codes/">All error codes</a> · <a href="/codes/whirlpool/oven/">Whirlpool F codes</a></p>
+</article>'''
+    desc = "Oven codes by brand. Whirlpool F1 E1 is the control, F2 E1 checks the grates, and GE F2 is an over-temperature code."
+    ld = article_ld("Oven error codes", path, "Oven", published=TODAY, modified=TODAY5)
+    if OVEN_THUMB:
+        ld["image"] = url(OVEN_THUMB)
+    write(path, page(path, "Oven Codes: Whirlpool F2 E1 Is Not GE F2", desc, body, [ld, faq_ld(faqs)],
+                    [("/", "Home"), ("/appliances/", "Appliances"), (path, "Ovens")], lastmod=TODAY5))
 
 def washer_appliance_page():
     """20 Nov 2026 refresh of /appliances/washers/. Other appliance hubs stay on their old dates."""
@@ -463,7 +835,7 @@ def washer_appliance_page():
             ("/appliances/ovens/", "Oven and range codes"),
             ("/codes/ge/oven/", "GE Appliances oven codes"),
             ("/codes/samsung/oven/", "Samsung oven codes"),
-            ("/codes/whirlpool/oven/", "Whirlpool oven F1 E1"),
+            ("/codes/whirlpool/oven/", "Whirlpool oven F codes"),
             ("/brands/lg/", "LG brand hub"),
             ("/appliances/dishwashers/", "Dishwasher codes"),
         ],
@@ -503,16 +875,19 @@ def washer_appliance_page():
 {faq_html(faqs)}
 {sources_html(sources, f"Whirlpool F9 E1 and F21 pages reread {TODAY4_H}. Samsung, LG, GE Appliances, Maytag, and Bosch washer pages were last read {TODAY_H} and were not rewritten in this refresh. Which Error Code is not affiliated with these makers.")}
 {end}
-<p><a href="/appliances/">All appliance types</a> · <a href="/codes/">All error codes</a> · <a href="/codes/ge/oven/">GE oven codes</a> · <a href="/codes/samsung/oven/">Samsung oven codes</a> · <a href="/codes/whirlpool/oven/">Whirlpool oven F1 E1</a></p></article>'''
+<p><a href="/appliances/">All appliance types</a> · <a href="/codes/">All error codes</a> · <a href="/codes/ge/oven/">GE oven codes</a> · <a href="/codes/samsung/oven/">Samsung oven codes</a> · <a href="/codes/whirlpool/oven/">Whirlpool oven F codes</a></p></article>'''
     desc = "Washer error codes by brand. Samsung 4C fills, LG OE drains, Whirlpool F9 E1 is a long drain. Whirlpool pages rechecked 20 Nov 2026."
     write(path, page(path, "Washer Error Codes by Brand", desc, body,
-                    [article_ld("Washer error codes", path, an, published=TODAY, modified=TODAY4), faq_ld(faqs)],
-                    [("/", "Home"), ("/appliances/", "Appliances"), (path, "Washers")], lastmod=TODAY4))
+                    [article_ld("Washer error codes", path, an, published=TODAY, modified=TODAY5), faq_ld(faqs)],
+                    [("/", "Home"), ("/appliances/", "Appliances"), (path, "Washers")], lastmod=TODAY5))
 
 def appliance_pages():
     for appl, an, plural in APPLS:
         if appl == "washer":
             washer_appliance_page()
+            continue
+        if appl == "oven":
+            oven_appliance_page()
             continue
         items = []
         for slug, name in BRANDS:
@@ -576,17 +951,17 @@ def codes_index(search_json):
     ]
     # A Loc Door link was added here 18 Nov 2026, so this hub's retrieved/modified date moves.
     body = f'''<article class="prose wide"><h1>Appliance error code pages</h1>
-{byline(TODAY2_H)}
-<p class="answer">One page for each brand and appliance we have checked, plus a page for the codes people look up most often. Search from the <a href="/">home page</a>.</p>
+{byline(TODAY5_H)}
+<p class="answer">One page for each brand and appliance we have checked, plus a page for the codes people look up most often. Search from the <a href="/">home page</a>. The <a href="/codes/whirlpool/oven/">Whirlpool range F-code table</a> was opened {TODAY5_H}.</p>
 <h2>By brand</h2><ul class="cols">{"".join(f'<li><a href="/brands/{s}/">{E(n)}</a></li>' for s, n in BRANDS)}</ul>
 <h2>By appliance</h2><ul class="cols">{"".join(f'<li><a href="/appliances/{p}/">{E(p.capitalize())}</a></li>' for _, _, p in APPLS)}</ul>
 <h2>Single codes</h2><ul class="cols">{"".join(rows)}</ul>
-<p class="note">Each code page links the manufacturer page it was read from. Retrieved {TODAY2_H}.</p>
+<p class="note">Each code page links the manufacturer page it was read from. GE oven pages were added {TODAY2_H}. Whirlpool range F codes were opened {TODAY5_H}.</p>
 <section class="sources"><h2>Sources</h2><ul><li><a href="https://www.samsung.com/us/support/troubleshoot/TSG10000997/" rel="nofollow noopener" target="_blank">Samsung washer error codes</a></li><li><a href="https://www.lg.com/us/support/help-library/lg-front-load-washer-error-code-list--20155069413456" rel="nofollow noopener" target="_blank">LG washer error codes</a></li><li><a href="https://products.geappliances.com/appliance/gea-support-search-content?contentId=16912" rel="nofollow noopener" target="_blank">GE Appliances refrigerator fault codes</a></li></ul><p class="note">The full citation list is on each code page.</p></section>
 {faq_html(faqs)}</article>'''
     write("/codes/", page("/codes/", f"Appliance Error Code List | {BRAND}", "Browse verified washer, dryer, dishwasher, refrigerator, and oven error codes by brand.",
-                         body, [article_ld("Appliance error code pages", "/codes/", modified=TODAY2), faq_ld(faqs)],
-                         [("/", "Home"), ("/codes/", "Error codes")], lastmod=TODAY2))
+                         body, [article_ld("Appliance error code pages", "/codes/", published=TODAY, modified=TODAY5), faq_ld(faqs)],
+                         [("/", "Home"), ("/codes/", "Error codes")], lastmod=TODAY5))
 
 def home(search_json):
     faqs = [
@@ -615,8 +990,8 @@ def home(search_json):
 <h2>How a page is built</h2><p>We open the manufacturer page, record the code and the checks written there, and link that page. If a code is not on the page, it is not here. Names are plain text. There are no logos and no claim that a brand sponsors this site. <a href="/methodology/">Sources and methods</a>.</p>
 {faq_html(faqs)}'''
     desc = "Look up washer, dryer, dishwasher, refrigerator, and oven error codes, plus the official fridge water filter number. Cited to the manufacturer."
-    # The GE brand card gained an Oven link on 18 Nov 2026 once GE oven codes were added.
-    write("/", page("/", f"{BRAND}: Appliance Error Codes and Water Filters", desc, body, faq_ld(faqs), lastmod=TODAY2))
+    # Search index gained the 21 Nov 2026 Whirlpool range codes, so this page's lastmod moves.
+    write("/", page("/", f"{BRAND}: Appliance Error Codes and Water Filters", desc, body, faq_ld(faqs), lastmod=TODAY5))
 
 def filter_pages():
     by = {f["slug"]: f for f in FILTERS}
@@ -720,7 +1095,7 @@ def guide_safety():
         ("/codes/samsung/oven/", "Samsung oven codes", "C-24, C-F0, door, and the other Samsung range codes we verified.", None),
     ], "Related oven pages", hid="nr-mid")
     end_reads = next_reads([
-        ("/codes/whirlpool/oven/", "Whirlpool oven F1 E1", "Whirlpool's published reset for range F1 E1, and when it says to call service.", None),
+        ("/codes/whirlpool/oven/", "Whirlpool oven F codes", "F1 E1 is the oven control. F2 E1 starts with the grates. Opened 21 Nov 2026.", None),
         ("/brands/lg/", "LG error codes", "LG washer, dryer, dishwasher, and refrigerator codes already on this site.", None),
         ("/codes/", "All error code pages", "Browse every brand and appliance listing we have checked.", None),
         ("/filters/", "Refrigerator water filter finder", "Official cartridge numbers only, cited to the manufacturer.", None),
@@ -762,17 +1137,17 @@ def guide_safety():
 <p><a href="/codes/">Browse error codes</a> · <a href="/appliances/ovens/">Oven brands</a> · <a href="/methodology/">Sources and methods</a></p>
 </article>'''
     write("/guides/safety/", page("/guides/safety/", f"Appliance Error Code Safety | {BRAND}", "Unplug, shut off gas, and check the range anti-tip bracket before you go past the manufacturer's published checks.",
-                                 body, [article_ld("Appliance error code safety", "/guides/safety/", published=TODAY, modified=TODAY3), faq_ld(faqs)],
-                                 [("/", "Home"), ("/guides/safety/", "Safety")], lastmod=TODAY3))
+                                 body, [article_ld("Appliance error code safety", "/guides/safety/", published=TODAY, modified=TODAY5), faq_ld(faqs)],
+                                 [("/", "Home"), ("/guides/safety/", "Safety")], lastmod=TODAY5))
 
-def simple(path, title, desc, h1, inner, crumb, faqs=None):
-    ld = [article_ld(h1, path)]
+def simple(path, title, desc, h1, inner, crumb, faqs=None, published=None, modified=None, lastmod=None):
+    ld = [article_ld(h1, path, published=published, modified=modified)]
     extra = ""
     if faqs:
         extra = faq_html(faqs)
         ld.append(faq_ld(faqs))
     body = f'<article class="prose"><h1>{E(h1)}</h1>{inner}{extra}</article>'
-    write(path, page(path, title, desc, body, ld, [("/", "Home"), (path, crumb)]))
+    write(path, page(path, title, desc, body, ld, [("/", "Home"), (path, crumb)], lastmod=lastmod))
 
 def about_legal():
     simple("/about/", f"About {BRAND}", "What Which Error Code is and how the pages are checked.", "About Which Error Code", f'''
@@ -797,14 +1172,14 @@ def about_legal():
 <p>Last verified is the date we read the source, {TODAY_H}. We change that date when the content changes, not on every rebuild.</p>
 <p><a href="/contact/">Report an error</a>.</p>''', "Sources and methods")
     simple("/image-policy/", f"Image Policy | {BRAND}", "How Which Error Code handles images and trademarks.", "Image policy", f'''
-<p>Last updated {TODAY_H}.</p>
+<p>Last updated {TODAY5_H}.</p>
 <h2>Images</h2>
-<p>The mark in the header, the favicon, and the social image are original graphics we made. They are not photographs of appliances and they are not brand logos. This version includes no photographs. Any photograph added later will link to this page.</p>
-<h2>AI generated images</h2>
-<p>This version uses no AI generated photographs. If we add one, the caption will say AI generated image, it will not show a real person, and it will not be presented as a photo of a real appliance.</p>
+<p>The mark in the header, the favicon, and the social image are original graphics we made. They are not photographs of appliances and they are not brand logos.</p>
+<h2>Article photographs</h2>
+<p>A code article may show one photograph. When it does, the picture is an AI-generated image of an unbranded control panel in ordinary light. It shows no real person, no logo, and no readable brand name. The caption says AI-generated image and links to this page. A page with no photograph is text only. We do not use illustrated or glossy renderings, and we do not present the picture as a photo of a specific person's appliance.</p>
 <h2>Logos and trademarks</h2>
 <p>We do not display appliance brand logos. Names are used only to identify the product.</p>
-<p>See <a href="/copyright/">copyright</a> or <a href="/contact/">contact</a> if you believe an image uses your work.</p>''', "Image policy")
+<p>See <a href="/copyright/">copyright</a> or <a href="/contact/">contact</a> if you believe an image uses your work.</p>''', "Image policy", published=TODAY, modified=TODAY5, lastmod=TODAY5)
     contact = f'''{byline()}
 <p>Questions and corrections go to <a href="mailto:{CONTACT_EMAIL}">{CONTACT_EMAIL}</a>. Include the page address, the code or part number, and a link to the manufacturer page if you have one.</p>
 <h2>Send a message</h2>
@@ -929,7 +1304,7 @@ def extras():
             f.write(f"<url><loc>{url(p)}</loc><lastmod>{m}</lastmod></url>\n")
         f.write("</urlset>\n")
     lines = [f"# {BRAND}", "",
-             f"> Which Error Code (whicherrorcode.com) explains home appliance error codes and official refrigerator water filter numbers. Every code is cited to the manufacturer. Last verified {TODAY2_H}.",
+             f"> Which Error Code (whicherrorcode.com) explains home appliance error codes and official refrigerator water filter numbers. Every code is cited to the manufacturer. Whirlpool range F codes were opened {TODAY5_H}. Earlier pages keep the date printed on the page.",
              "",
              "Independent. Not affiliated with any appliance maker. Unplug the appliance and shut off the gas before any inspection past the published checks.",
              "",
@@ -978,14 +1353,26 @@ def main():
     # from the 16 Nov 2026 build and keeps the original TODAY date.
     for r in ROWS:
         if r["individual"]:
-            code_page(r, new=(r["brand"] == "ge" and r["appl"] == "oven"))
+            if r["brand"] == "whirlpool" and r["appl"] == "oven":
+                continue
+            published = modified = None
+            if r["brand"] == "ge" and r["appl"] == "oven":
+                published = modified = TODAY2
+            elif r["brand"] == "bosch" and r["appl"] == "dishwasher" and r["code"] == "E22":
+                published, modified = TODAY, TODAY5
+            code_page(r, published=published, modified=modified)
     seen = []
     for brand, appl, rows in GROUPS:
         enriched = []
         for row in rows:
             match = next(r for r in ROWS if r["brand"] == brand and r["appl"] == appl and r["code"] == row["code"])
             enriched.append(match)
-        listing_page(brand, appl, enriched, new=(brand == "ge" and appl == "oven"))
+        if brand == "whirlpool" and appl == "oven":
+            whirlpool_oven_pages()
+        elif brand == "bosch" and appl == "dishwasher":
+            bosch_dishwasher_page()
+        else:
+            listing_page(brand, appl, enriched, new=(brand == "ge" and appl == "oven"))
         seen.append((brand, appl))
     brand_pages()
     appliance_pages()
