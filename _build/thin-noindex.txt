@@ -3,7 +3,6 @@
 # Remove a path from this list once the page has real, unique substance.
 appliances/dishwashers
 appliances/dryers
-appliances/ovens
 appliances/refrigerators
 brands/bosch
 brands/ge
@@ -30,7 +29,5 @@ codes/whirlpool/dishwasher
 codes/whirlpool/dishwasher/f1e1
 codes/whirlpool/dryer
 codes/whirlpool/dryer/f1-e1
-codes/whirlpool/oven
-codes/whirlpool/oven/f1-e1
 codes/whirlpool/refrigerator
 codes/whirlpool/refrigerator/f1-e1

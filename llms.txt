@@ -1,6 +1,6 @@
 # Which Error Code
 
-> Which Error Code (whicherrorcode.com) explains home appliance error codes and official refrigerator water filter numbers. Every code is cited to the manufacturer. Last verified 18 Nov 2026.
+> Which Error Code (whicherrorcode.com) explains home appliance error codes and official refrigerator water filter numbers. Every code is cited to the manufacturer. Whirlpool range F codes were opened 21 Nov 2026. Earlier pages keep the date printed on the page.
 
 Independent. Not affiliated with any appliance maker. Unplug the appliance and shut off the gas before any inspection past the published checks.
 
@@ -116,6 +116,7 @@ Independent. Not affiliated with any appliance maker. Unplug the appliance and s
 - [Whirlpool dishwasher F1E1](https://whicherrorcode.com/codes/whirlpool/dishwasher/f1e1/)
 - [Whirlpool refrigerator F1 E1](https://whicherrorcode.com/codes/whirlpool/refrigerator/f1-e1/)
 - [Whirlpool oven F1 E1](https://whicherrorcode.com/codes/whirlpool/oven/f1-e1/)
+- [Whirlpool oven F2 E1](https://whicherrorcode.com/codes/whirlpool/oven/f2-e1/)
 - [Maytag washer LF](https://whicherrorcode.com/codes/maytag/washer/lf/)
 - [Maytag washer Sud](https://whicherrorcode.com/codes/maytag/washer/sud/)
 - [Maytag washer Ofb](https://whicherrorcode.com/codes/maytag/washer/ofb/)
