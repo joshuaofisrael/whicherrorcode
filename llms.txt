@@ -129,6 +129,7 @@ Independent. Not affiliated with any appliance maker. Unplug the appliance and s
 - [Whirlpool dishwasher F1E1](https://whicherrorcode.com/codes/whirlpool/dishwasher/f1e1/)
 - [Whirlpool refrigerator F1 E1](https://whicherrorcode.com/codes/whirlpool/refrigerator/f1-e1/)
 - [Whirlpool oven F1 E1](https://whicherrorcode.com/codes/whirlpool/oven/f1-e1/)
+- [Whirlpool oven F2 E1](https://whicherrorcode.com/codes/whirlpool/oven/f2-e1/)
 - [Maytag washer LF](https://whicherrorcode.com/codes/maytag/washer/lf/)
 - [Maytag washer Sud](https://whicherrorcode.com/codes/maytag/washer/sud/)
 - [Maytag washer Ofb](https://whicherrorcode.com/codes/maytag/washer/ofb/)
