@@ -1,6 +1,6 @@
 # Which Error Code
 
-> Which Error Code (whicherrorcode.com) explains home appliance error codes and official refrigerator water filter numbers. Every code is cited to the manufacturer. Last verified 18 Nov 2026.
+> Which Error Code (whicherrorcode.com) explains home appliance error codes and official refrigerator water filter numbers. Every code is cited to the manufacturer. Last verified 19 Nov 2026.
 
 Independent. Not affiliated with any appliance maker. Unplug the appliance and shut off the gas before any inspection past the published checks.
 
@@ -21,6 +21,7 @@ Independent. Not affiliated with any appliance maker. Unplug the appliance and s
 - [LG dryer codes](https://whicherrorcode.com/codes/lg/dryer/)
 - [LG dishwasher codes](https://whicherrorcode.com/codes/lg/dishwasher/)
 - [LG refrigerator codes](https://whicherrorcode.com/codes/lg/refrigerator/)
+- [LG oven codes](https://whicherrorcode.com/codes/lg/oven/)
 - [GE Appliances washer codes](https://whicherrorcode.com/codes/ge/washer/)
 - [GE Appliances dryer codes](https://whicherrorcode.com/codes/ge/dryer/)
 - [GE Appliances dishwasher codes](https://whicherrorcode.com/codes/ge/dishwasher/)
@@ -93,6 +94,13 @@ Independent. Not affiliated with any appliance maker. Unplug the appliance and s
 - [LG refrigerator IF](https://whicherrorcode.com/codes/lg/refrigerator/if/)
 - [LG refrigerator gF](https://whicherrorcode.com/codes/lg/refrigerator/gf/)
 - [LG refrigerator dH](https://whicherrorcode.com/codes/lg/refrigerator/dh/)
+- [LG oven F1](https://whicherrorcode.com/codes/lg/oven/f1/)
+- [LG oven F3](https://whicherrorcode.com/codes/lg/oven/f3/)
+- [LG oven F10](https://whicherrorcode.com/codes/lg/oven/f10/)
+- [LG oven PF](https://whicherrorcode.com/codes/lg/oven/pf/)
+- [LG oven H5](https://whicherrorcode.com/codes/lg/oven/h5/)
+- [LG oven Sb](https://whicherrorcode.com/codes/lg/oven/sb/)
+- [LG oven LOC](https://whicherrorcode.com/codes/lg/oven/loc/)
 - [GE Appliances washer IE](https://whicherrorcode.com/codes/ge/washer/ie/)
 - [GE Appliances washer UE](https://whicherrorcode.com/codes/ge/washer/ue/)
 - [GE Appliances washer dE](https://whicherrorcode.com/codes/ge/washer/de/)
