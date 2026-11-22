@@ -281,8 +281,53 @@ def safety_for(r):
         extra = "<p>Samsung's refrigerator code page says not to unplug the refrigerator, and not to press buttons to hide a code, unless the steps for that code tell you to. Unplugging can make the fault harder to diagnose. The unplug step in the box above is for checks that require you to move the cabinet or open a panel.</p>"
     return SAFETY + extra
 
-def code_page(r, new=False):
-    d, dh = (TODAY2, TODAY2_H) if new else (TODAY, TODAY_H)
+def page_dates(new=False, day3=False):
+    if day3:
+        return TODAY3, TODAY3_H
+    if new:
+        return TODAY2, TODAY2_H
+    return TODAY, TODAY_H
+
+def oven_compare(brand):
+    links = []
+    for slug, name in BRANDS:
+        if slug == brand:
+            continue
+        if any(r["brand"] == slug and r["appl"] == "oven" for r in ROWS):
+            links.append((listing_path(slug, "oven"), f"{name} oven codes"))
+    links.append(("/appliances/ovens/", "All oven brands"))
+    links.append(("/guides/safety/", "Safety notes (unplug, gas, tip-over)"))
+    return compare_box(
+        "Check another oven brand",
+        links[:5],
+        "The same letters can mean different things on another brand. Start with the name printed on the range.",
+    )
+
+def oven_next_reads(brand, slug_skip=None, mid=False):
+    items = []
+    for r in ROWS:
+        if r["brand"] != brand or r["appl"] != "oven" or not r["individual"]:
+            continue
+        if slug_skip and r["slug"] == slug_skip:
+            continue
+        items.append((code_path(r), f"{BNAME[brand]} oven {r['code']}", r["meaning"][:110], None))
+        if len(items) >= 3:
+            break
+    for slug, name in (("ge", "GE Appliances"), ("samsung", "Samsung"), ("whirlpool", "Whirlpool")):
+        if slug == brand:
+            continue
+        if any(r["brand"] == slug and r["appl"] == "oven" for r in ROWS):
+            items.append((listing_path(slug, "oven"), f"{name} oven codes", f"Verified {name} range and wall oven codes on this site.", None))
+        if len(items) >= 4:
+            break
+    items.append(("/guides/safety/", "Appliance error code safety", "Unplug, shut off gas, and check the range anti-tip bracket.", None))
+    return next_reads(items[:4], "Related oven reads" if mid else "Keep reading", hid=("nr-mid" if mid else "nr-end"))
+
+# Hero photo for new oven articles. Coordinator image not in repo yet; leave empty so pages still build.
+OVEN_THUMB = "/assets/photos/oven-control-panel.webp"
+
+def code_page(r, new=False, day3=False):
+    d, dh = page_dates(new=new, day3=day3)
     path = code_path(r)
     b, a = BNAME[r["brand"]], ANAME[r["appl"]]
     title = f"{b} {a} {r['code']} Error Code"
@@ -300,6 +345,11 @@ def code_page(r, new=False):
     water = ""
     if r["water"]:
         water = '<p>Related: <a href="/filters/">refrigerator water filter finder</a>. A sensor code is not a filter part number. Match the cartridge in the refrigerator to the manual.</p>'
+    engage = day3 and r["appl"] == "oven"
+    thumb = article_thumb(OVEN_THUMB, f"Unbranded oven control panel for {b} {r['code']}") if engage else ""
+    compare = oven_compare(r["brand"]) if engage else ""
+    mid = oven_next_reads(r["brand"], r["slug"], mid=True) if engage else ""
+    end = oven_next_reads(r["brand"], r["slug"], mid=False) if engage else ""
     faqs = [
         (f"What does {b} {a.lower()} code {r['code']} mean?", r["meaning"] + (" " + r["extra"] if r["extra"] else "")),
         (f"What can I check on a {b} {a.lower()} showing {r['code']}?", " ".join(r["checks"]) + " Unplug the appliance or switch off its breaker before you move it or open a panel. If it uses gas, shut the gas off before any step the manufacturer did not publish."),
@@ -307,22 +357,26 @@ def code_page(r, new=False):
     ]
     body = f'''<article class="prose wide"><h1>{E(b)} {E(a.lower())} code {E(r["code"])}</h1>
 {byline(dh)}
+{thumb}
 <div class="answer"><p><strong>Meaning:</strong> {E(r["meaning"])}</p></div>
 {aliases}{extra}
 {safety_for(r)}
 <h2>Checks the manufacturer publishes</h2><ul class="checks">{checks}</ul>
 <h2>When to call a technician</h2><p>{E(r["service"])}</p>
+{compare}
 {water}
+{mid}
 {faq_html(faqs)}
 {sources_html(r["sources"], f"Retrieved {dh}. Models differ. If your manual defines this code differently, the manual wins. {BRAND} is not affiliated with {E(b)}.")}
 {more}
+{end}
 <p><a href="{listing_path(r["brand"], r["appl"])}">All {E(b)} {E(a.lower())} codes</a> · <a href="/brands/{r["brand"]}/">{E(b)}</a> · <a href="/appliances/{APLUR[r["appl"]]}/">{E(a)} brands</a> · <a href="/guides/safety/">Safety notes</a> · <a href="/codes/">All error codes</a></p>
 </article>'''
     write(path, page(path, title, desc, body, [article_ld(f"{b} {a.lower()} code {r['code']}", path, f"{b} {r['code']}", published=d, modified=d), faq_ld(faqs)],
                     [("/", "Home"), ("/codes/", "Error codes"), (listing_path(r["brand"], r["appl"]), f"{b} {a}"), (path, r["code"])], lastmod=d))
 
-def listing_page(brand, appl, rows, new=False):
-    d, dh = (TODAY2, TODAY2_H) if new else (TODAY, TODAY_H)
+def listing_page(brand, appl, rows, new=False, day3=False):
+    d, dh = page_dates(new=new, day3=day3)
     path = listing_path(brand, appl)
     b, a = BNAME[brand], ANAME[appl]
     bits = []
@@ -340,14 +394,25 @@ def listing_page(brand, appl, rows, new=False):
     fridge_note = ""
     if brand == "samsung" and appl == "refrigerator":
         fridge_note = "<p>Samsung's refrigerator code page says not to unplug the refrigerator, and not to clear a code from the panel, unless the steps for that code say to. The unplug line above is for when you have to move the cabinet.</p>"
+    engage = day3 and appl == "oven"
+    thumb = article_thumb(OVEN_THUMB, f"Unbranded oven control panel for {b} oven codes") if engage else ""
+    compare = oven_compare(brand) if engage else ""
+    mid = oven_next_reads(brand, mid=True) if engage else ""
+    end = oven_next_reads(brand, mid=False) if engage else ""
+    # Split hub codes so mid next-reads sit after the first handful of entries.
+    mid_at = min(6, max(3, len(bits) // 3)) if bits else 0
+    codes_html = "".join(bits[:mid_at]) + mid + "".join(bits[mid_at:]) if mid else "".join(bits)
     body = f'''<article class="prose wide"><h1>{E(b)} {E(a.lower())} error codes</h1>
 {byline(dh)}
+{thumb}
 <div class="answer"><p>These are the {E(b)} {E(a.lower())} codes we could verify on the manufacturer's own page. Each block says what the code means, the checks that page allows, and when it says to call a technician.</p></div>
 {SAFETY}<p>{E(gas).strip()}</p>{fridge_note}
-{"".join(bits)}
+{compare}
+{codes_html}
 {faq_html(faqs)}
 {sources_html(unique_sources(rows), f"Retrieved {dh}. {BRAND} is not affiliated with {E(b)}. Names identify the appliance only.")}
-<p><a href="/brands/{brand}/">All {E(b)} pages</a> · <a href="/appliances/{APLUR[appl]}/">All {E(a.lower())} brands</a> · <a href="/filters/">Water filters</a></p>
+{end}
+<p><a href="/brands/{brand}/">All {E(b)} pages</a> · <a href="/appliances/{APLUR[appl]}/">All {E(a.lower())} brands</a> · <a href="/guides/safety/">Safety notes</a> · <a href="/filters/">Water filters</a></p>
 </article>'''
     # fix empty gas paragraph
     body = body.replace("<p></p>", "")
@@ -384,8 +449,13 @@ def brand_pages():
             (f"Why is a {name} code missing?",
              "A code is missing when it was not on the manufacturer page we checked. We do not add codes from repair blogs or from another brand."),
         ]
-        # ge gained an oven listing on 18 Nov 2026; every other brand page is unchanged from 16 Nov.
-        dh, lm = (TODAY2_H, TODAY2) if slug == "ge" else (None, None)
+        # ge gained oven on 18 Nov; lg gained oven on 19 Nov; other brand pages keep original dates.
+        if slug == "lg":
+            dh, lm = TODAY3_H, TODAY3
+        elif slug == "ge":
+            dh, lm = TODAY2_H, TODAY2
+        else:
+            dh, lm = None, None
         body = f'''<article class="prose"><h1>{E(name)} error codes</h1>
 {byline(dh)}
 <p class="answer">Pick the appliance. Every code is cited to a {E(name)} manual or support page. We leave out codes we have not checked on that page.</p>
@@ -411,17 +481,17 @@ def brand_pages():
         ("Which brands or machines are missing?",
          "Frigidaire pages are not in this version. We did not find a Frigidaire.com code list we could cite code by code. Bosch ranges, refrigerators, and dryers, and KitchenAid washers and dryers are in the same gap."),
     ]
-    # Content changed 18 Nov 2026: the GE oven gap note was removed from this hub.
+    # Content changed 19 Nov 2026: LG oven codes added to the brand hub cards.
     body = f'''<article class="prose"><h1>Error codes by brand</h1>
-{byline(TODAY2_H)}
+{byline(TODAY3_H)}
 <p class="answer">Choose a brand. We publish a code only after reading it on that manufacturer's support page or manual.</p>
 <ul class="cards">{"".join(cards)}</ul>
 <p>Frigidaire pages are not in this version. We did not find a Frigidaire.com code list we could cite code by code. Bosch ranges, refrigerators, and dryers, and KitchenAid washers and dryers are in the same gap.</p>
 {faq_html(faqs)}
 <p><a href="/codes/">All error codes</a> · <a href="/appliances/">By appliance</a> · <a href="/guides/safety/">Safety notes</a></p></article>'''
     write("/brands/", page("/brands/", f"Appliance Error Codes by Brand | {BRAND}", "Samsung, LG, GE Appliances, Whirlpool, Maytag, KitchenAid, and Bosch error codes, each cited to the manufacturer.",
-                          body, [article_ld("Error codes by brand", "/brands/", modified=TODAY2), faq_ld(faqs)],
-                          [("/", "Home"), ("/brands/", "Brands")], lastmod=TODAY2))
+                          body, [article_ld("Error codes by brand", "/brands/", modified=TODAY3), faq_ld(faqs)],
+                          [("/", "Home"), ("/brands/", "Brands")], lastmod=TODAY3))
 
 def washer_appliance_page():
     """20 Nov 2026 refresh of /appliances/washers/. Other appliance hubs stay on their old dates."""
@@ -525,8 +595,8 @@ def appliance_pages():
              "Only the checks written on that brand's page, taken from the manufacturer. Unplug the appliance or switch off the breaker before you move it or open a panel. If it uses gas, shut the gas supply off before any step the manufacturer did not publish."),
         ]
         related = '<p>A filter part number is not an error code. <a href="/filters/">Which water filter fits</a> is a separate page.</p>' if appl == "refrigerator" else ""
-        # the oven listing gained a GE card on 18 Nov 2026; the other appliance pages are unchanged.
-        dh, lm = (TODAY2_H, TODAY2) if appl == "oven" else (None, None)
+        # oven listing gained GE on 18 Nov and LG on 19 Nov; other appliance pages are unchanged.
+        dh, lm = (TODAY3_H, TODAY3) if appl == "oven" else (None, None)
         body = f'''<article class="prose"><h1>{E(an)} error codes</h1>
 {byline(dh)}
 <p class="answer">Brand pages for {E(an.lower())} codes we verified. The same letters can mean different things on another brand, so start with the name on the appliance.</p>
@@ -571,19 +641,19 @@ def codes_index(search_json):
         ("Which source is a code based on?",
          "Each code page links the manufacturer page it was read from. If the code is not on that page, it is not on this site."),
     ]
-    # A Loc Door link was added here 18 Nov 2026, so this hub's retrieved/modified date moves.
+    # LG oven single-code links added 19 Nov 2026, so this hub's retrieved/modified date moves.
     body = f'''<article class="prose wide"><h1>Appliance error code pages</h1>
-{byline(TODAY2_H)}
+{byline(TODAY3_H)}
 <p class="answer">One page for each brand and appliance we have checked, plus a page for the codes people look up most often. Search from the <a href="/">home page</a>.</p>
 <h2>By brand</h2><ul class="cols">{"".join(f'<li><a href="/brands/{s}/">{E(n)}</a></li>' for s, n in BRANDS)}</ul>
 <h2>By appliance</h2><ul class="cols">{"".join(f'<li><a href="/appliances/{p}/">{E(p.capitalize())}</a></li>' for _, _, p in APPLS)}</ul>
 <h2>Single codes</h2><ul class="cols">{"".join(rows)}</ul>
-<p class="note">Each code page links the manufacturer page it was read from. Retrieved {TODAY2_H}.</p>
-<section class="sources"><h2>Sources</h2><ul><li><a href="https://www.samsung.com/us/support/troubleshoot/TSG10000997/" rel="nofollow noopener" target="_blank">Samsung washer error codes</a></li><li><a href="https://www.lg.com/us/support/help-library/lg-front-load-washer-error-code-list--20155069413456" rel="nofollow noopener" target="_blank">LG washer error codes</a></li><li><a href="https://products.geappliances.com/appliance/gea-support-search-content?contentId=16912" rel="nofollow noopener" target="_blank">GE Appliances refrigerator fault codes</a></li></ul><p class="note">The full citation list is on each code page.</p></section>
+<p class="note">Each code page links the manufacturer page it was read from. Retrieved {TODAY3_H}.</p>
+<section class="sources"><h2>Sources</h2><ul><li><a href="https://www.samsung.com/us/support/troubleshoot/TSG10000997/" rel="nofollow noopener" target="_blank">Samsung washer error codes</a></li><li><a href="https://www.lg.com/us/support/help-library/lg-front-load-washer-error-code-list--20155069413456" rel="nofollow noopener" target="_blank">LG washer error codes</a></li><li><a href="https://www.lg.com/us/support/help-library/lg-range-error-codes-list--20150154166283" rel="nofollow noopener" target="_blank">LG range error codes</a></li><li><a href="https://products.geappliances.com/appliance/gea-support-search-content?contentId=16912" rel="nofollow noopener" target="_blank">GE Appliances refrigerator fault codes</a></li></ul><p class="note">The full citation list is on each code page.</p></section>
 {faq_html(faqs)}</article>'''
     write("/codes/", page("/codes/", f"Appliance Error Code List | {BRAND}", "Browse verified washer, dryer, dishwasher, refrigerator, and oven error codes by brand.",
-                         body, [article_ld("Appliance error code pages", "/codes/", modified=TODAY2), faq_ld(faqs)],
-                         [("/", "Home"), ("/codes/", "Error codes")], lastmod=TODAY2))
+                         body, [article_ld("Appliance error code pages", "/codes/", modified=TODAY3), faq_ld(faqs)],
+                         [("/", "Home"), ("/codes/", "Error codes")], lastmod=TODAY3))
 
 def home(search_json):
     faqs = [
@@ -612,8 +682,8 @@ def home(search_json):
 <h2>How a page is built</h2><p>We open the manufacturer page, record the code and the checks written there, and link that page. If a code is not on the page, it is not here. Names are plain text. There are no logos and no claim that a brand sponsors this site. <a href="/methodology/">Sources and methods</a>.</p>
 {faq_html(faqs)}'''
     desc = "Look up washer, dryer, dishwasher, refrigerator, and oven error codes, plus the official fridge water filter number. Cited to the manufacturer."
-    # The GE brand card gained an Oven link on 18 Nov 2026 once GE oven codes were added.
-    write("/", page("/", f"{BRAND}: Appliance Error Codes and Water Filters", desc, body, faq_ld(faqs), lastmod=TODAY2))
+    # The LG brand card gained an Oven link on 19 Nov 2026 once LG oven codes were added.
+    write("/", page("/", f"{BRAND}: Appliance Error Codes and Water Filters", desc, body, faq_ld(faqs), lastmod=TODAY3))
 
 def filter_pages():
     by = {f["slug"]: f for f in FILTERS}
@@ -796,9 +866,9 @@ def about_legal():
     simple("/image-policy/", f"Image Policy | {BRAND}", "How Which Error Code handles images and trademarks.", "Image policy", f'''
 <p>Last updated {TODAY_H}.</p>
 <h2>Images</h2>
-<p>The mark in the header, the favicon, and the social image are original graphics we made. They are not photographs of appliances and they are not brand logos. This version includes no photographs. Any photograph added later will link to this page.</p>
+<p>The mark in the header, the favicon, and the social image are original graphics we made. They are not brand logos. Article thumbnails are original AI-generated news-photo style images hosted on this site under <code>/assets/photos/</code>, including <code>/assets/photos/oven-control-panel.webp</code>.</p>
 <h2>AI generated images</h2>
-<p>This version uses no AI generated photographs. If we add one, the caption will say AI generated image, it will not show a real person, and it will not be presented as a photo of a real appliance.</p>
+<p>Each article thumbnail carries a visible "AI-generated image" credit and a link to this page. The images do not depict real identifiable people and are never presented as a photograph of a named appliance or a real household.</p>
 <h2>Logos and trademarks</h2>
 <p>We do not display appliance brand logos. Names are used only to identify the product.</p>
 <p>See <a href="/copyright/">copyright</a> or <a href="/contact/">contact</a> if you believe an image uses your work.</p>''', "Image policy")
@@ -926,7 +996,7 @@ def extras():
             f.write(f"<url><loc>{url(p)}</loc><lastmod>{m}</lastmod></url>\n")
         f.write("</urlset>\n")
     lines = [f"# {BRAND}", "",
-             f"> Which Error Code (whicherrorcode.com) explains home appliance error codes and official refrigerator water filter numbers. Every code is cited to the manufacturer. Last verified {TODAY2_H}.",
+             f"> Which Error Code (whicherrorcode.com) explains home appliance error codes and official refrigerator water filter numbers. Every code is cited to the manufacturer. Last verified {TODAY3_H}.",
              "",
              "Independent. Not affiliated with any appliance maker. Unplug the appliance and shut off the gas before any inspection past the published checks.",
              "",
@@ -970,19 +1040,28 @@ def search_index():
     return json.dumps(data, ensure_ascii=False)
 
 def main():
-    # The ge/oven group and its Loc Door page were added 18 Nov 2026; they are brand new
-    # URLs and use TODAY2 for published/modified/lastmod. Every other page is unchanged
-    # from the 16 Nov 2026 build and keeps the original TODAY date.
+    # ge/oven (18 Nov) uses TODAY2. lg/oven (19 Nov) uses TODAY3. Other pages keep their
+    # original published dates so a rebuild does not manufacture freshness.
     for r in ROWS:
         if r["individual"]:
-            code_page(r, new=(r["brand"] == "ge" and r["appl"] == "oven"))
+            code_page(
+                r,
+                new=(r["brand"] == "ge" and r["appl"] == "oven"),
+                day3=(r["brand"] == "lg" and r["appl"] == "oven"),
+            )
     seen = []
     for brand, appl, rows in GROUPS:
         enriched = []
         for row in rows:
             match = next(r for r in ROWS if r["brand"] == brand and r["appl"] == appl and r["code"] == row["code"])
             enriched.append(match)
-        listing_page(brand, appl, enriched, new=(brand == "ge" and appl == "oven"))
+        listing_page(
+            brand,
+            appl,
+            enriched,
+            new=(brand == "ge" and appl == "oven"),
+            day3=(brand == "lg" and appl == "oven"),
+        )
         seen.append((brand, appl))
     brand_pages()
     appliance_pages()
