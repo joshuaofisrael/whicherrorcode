@@ -137,10 +137,7 @@ def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, robot
             f'<script src="/assets/consent.js?v=1" defer data-ga4-loader="1" data-ga4-id="{E(GA4_ID)}" data-ga4-src="https://www.googletagmanager.com/gtag/js"></script>'
         )
         # Publisher verification only: client script + account meta, no ad units on the page.
-        adsense = (
-            f'<meta name="google-adsense-account" content="{E(ADSENSE_CLIENT)}">'
-            f'<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={E(ADSENSE_CLIENT)}" crossorigin="anonymous"></script>'
-        )
+        adsense = ""  # AdSense detached 21 Nov 2026 until the account is approved (see seo-central/site-seo-rules.md). Do not re-add.
         banner = (
             '<div id="cookie-banner" class="cookie-banner" role="region" aria-label="Cookie choices" hidden>'
             '<p>Google Analytics 4 stays off until you accept. Cloudflare Web Analytics does not use cookies.</p>'
@@ -915,7 +912,7 @@ def extras():
         f.write(INDEXNOW_KEY)
     # AdSense ads.txt (publisher verification). Not a sitemap URL.
     with open(os.path.join(ROOT, "ads.txt"), "w", encoding="utf-8") as f:
-        f.write(f"google.com, pub-{ADSENSE_CLIENT.split('ca-pub-')[-1]}, DIRECT, f08c47fec0942fa0\n")
+        f.write("")  # AdSense detached 21 Nov 2026 until the account is approved (see seo-central/site-seo-rules.md). Do not re-add.
     bots = ["*", "Googlebot", "Bingbot", "Mediapartners-Google", "OAI-SearchBot", "ChatGPT-User", "GPTBot",
             "PerplexityBot", "Perplexity-User", "ClaudeBot", "Claude-SearchBot", "Claude-User",
             "Google-Extended", "Applebot", "Applebot-Extended", "DuckAssistBot", "Amazonbot", "CCBot", "Bytespider"]
