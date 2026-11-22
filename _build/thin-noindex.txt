@@ -26,8 +26,6 @@ codes/kitchenaid/dishwasher/h2o
 codes/maytag/washer/sud
 codes/samsung/dishwasher/he
 codes/samsung/dishwasher/te
-codes/whirlpool/dishwasher
-codes/whirlpool/dishwasher/f1e1
 codes/whirlpool/dryer
 codes/whirlpool/dryer/f1-e1
 codes/whirlpool/oven
